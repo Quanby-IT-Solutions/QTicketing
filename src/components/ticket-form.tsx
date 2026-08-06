@@ -3,6 +3,7 @@ import { CalendarDays, FileText, FolderKanban, MapPin, Paperclip, Send, Tag } fr
 import { createTicketAction } from "@/app/actions/tickets";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
@@ -151,7 +152,7 @@ export function TicketForm({
             <Label className="flex items-center gap-1.5" htmlFor="dueDate">
               <CalendarDays className="size-3.5 text-muted-foreground" /> Due date
             </Label>
-            <Input id="dueDate" name="dueDate" type="date" />
+            <DatePicker id="dueDate" name="dueDate" />
           </div>
         </CardContent>
       </Card>

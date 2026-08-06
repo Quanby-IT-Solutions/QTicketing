@@ -68,6 +68,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     .select({
       id: ticketComments.id,
       parentCommentId: ticketComments.parentCommentId,
+      authorId: ticketComments.authorId,
       body: ticketComments.body,
       createdAt: ticketComments.createdAt,
       authorName: users.name,
@@ -218,6 +219,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               <TicketConversation
                 comments={comments.map((comment) => ({
                   ...comment,
+                  canManage: comment.authorId === user.id || user.role === "admin",
                   createdAt: comment.createdAt.toISOString(),
                   createdAtLabel: comment.createdAt.toLocaleString(),
                 }))}
@@ -259,7 +261,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               <CardTitle>Status history</CardTitle>
               <CardDescription>{history.length} recorded {history.length === 1 ? "event" : "events"}</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="max-h-80 overflow-y-auto overscroll-contain pr-3">
               {history.length > 0 ? (
                 <ol className="space-y-0">
                   {history.map((entry, index) => (

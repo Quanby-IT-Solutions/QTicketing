@@ -33,6 +33,7 @@ type TicketCommentDialogProps = {
   parentComment?: ParentComment | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onPosted?: () => Promise<void> | void;
   hideTrigger?: boolean;
   triggerLabel?: string;
   className?: string;
@@ -48,6 +49,7 @@ export function TicketCommentDialog({
   parentComment,
   open: controlledOpen,
   onOpenChange,
+  onPosted,
   hideTrigger = false,
   triggerLabel = "Add comment",
   className,
@@ -79,7 +81,8 @@ export function TicketCommentDialog({
       try {
         await addCommentAction(formData);
         setOpen(false);
-        router.refresh();
+        if (onPosted) await onPosted();
+        else router.refresh();
       } catch (submitError) {
         setError(getErrorMessage(submitError));
       }

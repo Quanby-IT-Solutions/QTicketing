@@ -7,7 +7,14 @@ import { db } from "@/db";
 import { projects, ticketAttachments, ticketComments, tickets, ticketStatusHistory, userProjects, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { canEditTicket, canViewTicket } from "@/lib/permissions";
-import { commentSchema, createTicketSchema, updateTicketInlineSchema, updateTicketSchema } from "@/lib/validation";
+import {
+  commentSchema,
+  createTicketSchema,
+  deleteCommentSchema,
+  updateCommentSchema,
+  updateTicketInlineSchema,
+  updateTicketSchema,
+} from "@/lib/validation";
 import { getAttachmentDownloadUrl, uploadTicketAttachment } from "@/lib/storage";
 
 type CurrentUser = Awaited<ReturnType<typeof requireUser>>;
@@ -191,6 +198,7 @@ export async function getTicketDetailsAction(ticketId: string) {
     .select({
       id: ticketComments.id,
       parentCommentId: ticketComments.parentCommentId,
+      authorId: ticketComments.authorId,
       body: ticketComments.body,
       createdAt: ticketComments.createdAt,
       authorName: users.name,
@@ -245,6 +253,7 @@ export async function getTicketDetailsAction(ticketId: string) {
     project: project ? { id: project.id, name: project.name, title: project.title } : null,
     comments: comments.map((comment) => ({
       ...comment,
+      canManage: comment.authorId === user.id || user.role === "admin",
       createdAt: comment.createdAt.toISOString(),
       createdAtLabel: comment.createdAt.toLocaleString(),
     })),
@@ -433,4 +442,86 @@ export async function addCommentAction(formData: FormData) {
   });
 
   return { commentId: comment.id };
+}
+
+async function getManageableComment({
+  commentId,
+  ticketId,
+  user,
+}: {
+  commentId: string;
+  ticketId: string;
+  user: CurrentUser;
+}) {
+  const [comment] = await db
+    .select({
+      id: ticketComments.id,
+      authorId: ticketComments.authorId,
+      ticketId: ticketComments.ticketId,
+      projectId: tickets.projectId,
+      requesterId: tickets.requesterId,
+      assigneeId: tickets.assigneeId,
+    })
+    .from(ticketComments)
+    .innerJoin(tickets, eq(ticketComments.ticketId, tickets.id))
+    .where(and(eq(ticketComments.id, commentId), eq(ticketComments.ticketId, ticketId)))
+    .limit(1);
+
+  if (!comment || !canViewTicket(user, comment)) {
+    throw new Error("Comment not found.");
+  }
+
+  if (comment.authorId !== user.id && user.role !== "admin") {
+    throw new Error("You can only change your own comments.");
+  }
+
+  return comment;
+}
+
+export async function updateCommentAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = updateCommentSchema.parse({
+    ticketId: formData.get("ticketId"),
+    commentId: formData.get("commentId"),
+    body: formData.get("body"),
+  });
+  const comment = await getManageableComment({
+    commentId: parsed.commentId,
+    ticketId: parsed.ticketId,
+    user,
+  });
+
+  await db
+    .update(ticketComments)
+    .set({ body: parsed.body })
+    .where(eq(ticketComments.id, parsed.commentId));
+  await db.update(tickets).set({ updatedAt: new Date() }).where(eq(tickets.id, parsed.ticketId));
+
+  await revalidateTicketPaths({
+    ticketId: parsed.ticketId,
+    projectId: comment.projectId,
+    includeDetail: true,
+  });
+}
+
+export async function deleteCommentAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = deleteCommentSchema.parse({
+    ticketId: formData.get("ticketId"),
+    commentId: formData.get("commentId"),
+  });
+  const comment = await getManageableComment({
+    commentId: parsed.commentId,
+    ticketId: parsed.ticketId,
+    user,
+  });
+
+  await db.delete(ticketComments).where(eq(ticketComments.id, parsed.commentId));
+  await db.update(tickets).set({ updatedAt: new Date() }).where(eq(tickets.id, parsed.ticketId));
+
+  await revalidateTicketPaths({
+    ticketId: parsed.ticketId,
+    projectId: comment.projectId,
+    includeDetail: true,
+  });
 }

@@ -104,7 +104,13 @@ function editableTicket(ticket: TicketDetails["ticket"]): EditableTicket {
   };
 }
 
-function TicketDetailsContent({ details }: { details: TicketDetails }) {
+function TicketDetailsContent({
+  details,
+  onRefresh,
+}: {
+  details: TicketDetails;
+  onRefresh: () => Promise<void>;
+}) {
   const { assignee, attachments, comments, history, project, requester, ticket } =
     details;
 
@@ -191,6 +197,7 @@ function TicketDetailsContent({ details }: { details: TicketDetails }) {
               </CardDescription>
               <CardAction>
                 <TicketCommentDialog
+                  onPosted={onRefresh}
                   ticket={{
                     id: ticket.id,
                     ticketNumber: ticket.ticketNumber,
@@ -202,6 +209,7 @@ function TicketDetailsContent({ details }: { details: TicketDetails }) {
             <CardContent>
               <TicketConversation
                 comments={comments}
+                onRefresh={onRefresh}
                 ticket={{
                   id: ticket.id,
                   ticketNumber: ticket.ticketNumber,
@@ -253,7 +261,7 @@ function TicketDetailsContent({ details }: { details: TicketDetails }) {
                 {history.length} recorded {history.length === 1 ? "event" : "events"}
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="max-h-80 overflow-y-auto overscroll-contain pr-3">
               {history.length > 0 ? (
                 <ol className="space-y-0">
                   {history.map((entry, index) => (
@@ -312,25 +320,28 @@ export function TicketDetailsDialog({
   const currentDetails =
     details?.ticket.id === ticket.id ? details : null;
   const currentError = error?.ticketId === ticket.id ? error.message : null;
+  const refreshDetails = React.useCallback(async () => {
+    try {
+      setDetails(await getTicketDetailsAction(ticket.id));
+      setError(null);
+    } catch (loadError) {
+      setError({
+        ticketId: ticket.id,
+        message:
+          loadError instanceof Error
+            ? loadError.message
+            : "Ticket details could not be loaded.",
+      });
+    }
+  }, [ticket.id]);
 
   React.useEffect(() => {
     if (!open || details?.ticket.id === ticket.id) return;
 
     startTransition(async () => {
-      try {
-        setDetails(await getTicketDetailsAction(ticket.id));
-        setError(null);
-      } catch (loadError) {
-        setError({
-          ticketId: ticket.id,
-          message:
-            loadError instanceof Error
-              ? loadError.message
-              : "Ticket details could not be loaded.",
-        });
-      }
+      await refreshDetails();
     });
-  }, [details?.ticket.id, open, ticket.id]);
+  }, [details?.ticket.id, open, refreshDetails, ticket.id]);
 
   return (
     <>
@@ -381,7 +392,7 @@ export function TicketDetailsDialog({
               </div>
             </div>
           ) : currentDetails ? (
-            <TicketDetailsContent details={currentDetails} />
+            <TicketDetailsContent details={currentDetails} onRefresh={refreshDetails} />
           ) : (
             <div className="flex min-h-96 flex-col">
               <div className="flex items-center gap-2 border-b px-5 py-3 text-sm text-muted-foreground">

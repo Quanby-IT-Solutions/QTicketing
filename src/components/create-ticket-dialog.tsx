@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { DatePicker } from "@/components/ui/date-picker"
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Spinner } from "@/components/ui/spinner"
 import { Textarea } from "@/components/ui/textarea"
@@ -410,7 +411,7 @@ function CreateTicketDialogForm({
 
             <Field>
               <FieldLabel htmlFor="create-ticket-due-date">Due date</FieldLabel>
-              <Input disabled={isPending} id="create-ticket-due-date" name="dueDate" type="date" />
+              <DatePicker disabled={isPending} id="create-ticket-due-date" name="dueDate" />
             </Field>
           </div>
 

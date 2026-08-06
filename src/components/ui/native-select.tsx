@@ -1,60 +1,183 @@
+"use client"
+
 import * as React from "react"
 
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
-import { ChevronDownIcon } from "lucide-react"
 
-type NativeSelectProps = Omit<React.ComponentProps<"select">, "size"> & {
+type NativeSelectProps = {
+  "aria-describedby"?: string
+  "aria-invalid"?: React.AriaAttributes["aria-invalid"]
+  "aria-label"?: string
+  children?: React.ReactNode
+  className?: string
+  defaultValue?: string | number
+  disabled?: boolean
+  form?: string
+  id?: string
+  name?: string
+  onChange?: React.ChangeEventHandler<HTMLSelectElement>
+  required?: boolean
   size?: "sm" | "default"
+  value?: string | number
+}
+
+type NativeSelectOptionProps = {
+  children?: React.ReactNode
+  className?: string
+  disabled?: boolean
+  label?: string
+  value?: string | number
+}
+
+type NativeSelectOptGroupProps = {
+  children?: React.ReactNode
+  className?: string
+  label?: React.ReactNode
+}
+
+function getTextContent(node: React.ReactNode): string {
+  if (typeof node === "string" || typeof node === "number") return String(node)
+  if (Array.isArray(node)) return node.map(getTextContent).join("")
+  if (React.isValidElement<{ children?: React.ReactNode }>(node)) {
+    return getTextContent(node.props.children)
+  }
+  return ""
+}
+
+function getOptionItems(children: React.ReactNode) {
+  const items: { label: React.ReactNode; value: string }[] = []
+
+  React.Children.forEach(children, (child) => {
+    if (!React.isValidElement(child)) return
+
+    if (child.type === NativeSelectOptGroup) {
+      React.Children.forEach(
+        (child.props as NativeSelectOptGroupProps).children,
+        (groupChild) => {
+          if (!React.isValidElement(groupChild) || groupChild.type !== NativeSelectOption) return
+
+          const props = groupChild.props as NativeSelectOptionProps
+          items.push({
+            label: props.children,
+            value: String(props.value ?? ""),
+          })
+        },
+      )
+      return
+    }
+
+    if (child.type !== NativeSelectOption) return
+
+    const props = child.props as NativeSelectOptionProps
+    items.push({
+      label: props.children,
+      value: String(props.value ?? ""),
+    })
+  })
+
+  return items
 }
 
 function NativeSelect({
+  "aria-describedby": ariaDescribedBy,
+  "aria-invalid": ariaInvalid,
+  "aria-label": ariaLabel,
   className,
+  children,
+  defaultValue,
+  disabled,
+  form,
+  id,
+  name,
+  onChange,
+  required,
   size = "default",
-  ...props
+  value,
 }: NativeSelectProps) {
+  const options = React.useMemo(() => getOptionItems(children), [children])
+  const placeholder = options.find((option) => option.value === "")?.label
+
+  function handleValueChange(nextValue: string | null) {
+    onChange?.({
+      currentTarget: { value: nextValue ?? "" },
+      target: { value: nextValue ?? "" },
+    } as React.ChangeEvent<HTMLSelectElement>)
+  }
+
   return (
-    <div
-      className={cn(
-        "group/native-select relative w-fit has-[select:disabled]:opacity-50",
-        className
-      )}
-      data-slot="native-select-wrapper"
-      data-size={size}
+    <Select
+      defaultValue={defaultValue === undefined ? undefined : String(defaultValue)}
+      disabled={disabled}
+      form={form}
+      id={id}
+      items={options}
+      name={name}
+      onValueChange={handleValueChange}
+      required={required}
+      value={value === undefined ? undefined : String(value)}
     >
-      <select
-        data-slot="native-select"
+      <SelectTrigger
+        aria-describedby={ariaDescribedBy}
+        aria-invalid={ariaInvalid}
+        aria-label={ariaLabel}
+        className={cn("w-fit", className)}
         data-size={size}
-        className="h-8 w-full min-w-0 appearance-none rounded-lg border border-input bg-transparent py-1 pr-8 pl-2.5 text-sm transition-colors outline-none select-none selection:bg-primary selection:text-primary-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 data-[size=sm]:h-7 data-[size=sm]:rounded-[min(var(--radius-md),10px)] data-[size=sm]:py-0.5 dark:bg-input/30 dark:hover:bg-input/50 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40"
-        {...props}
-      />
-      <ChevronDownIcon className="pointer-events-none absolute top-1/2 right-2.5 size-4 -translate-y-1/2 text-muted-foreground select-none" aria-hidden="true" data-slot="native-select-icon" />
-    </div>
+        data-slot="native-select"
+        size={size}
+      >
+        <SelectValue placeholder={placeholder} />
+      </SelectTrigger>
+      <SelectContent align="start">
+        {children}
+      </SelectContent>
+    </Select>
   )
 }
 
 function NativeSelectOption({
   className,
-  ...props
-}: React.ComponentProps<"option">) {
+  children,
+  disabled,
+  label,
+  value,
+}: NativeSelectOptionProps) {
+
   return (
-    <option
+    <SelectItem
       data-slot="native-select-option"
-      className={cn("bg-[Canvas] text-[CanvasText]", className)}
-      {...props}
-    />
+      disabled={disabled}
+      label={label ?? getTextContent(children)}
+      value={String(value ?? "")}
+      className={className}
+    >
+      {children}
+    </SelectItem>
   )
 }
 
 function NativeSelectOptGroup({
   className,
-  ...props
-}: React.ComponentProps<"optgroup">) {
+  children,
+  label,
+}: NativeSelectOptGroupProps) {
+
   return (
-    <optgroup
+    <SelectGroup
       data-slot="native-select-optgroup"
-      className={cn("bg-[Canvas] text-[CanvasText]", className)}
-      {...props}
-    />
+      className={className}
+    >
+      {label ? <SelectLabel>{label}</SelectLabel> : null}
+      {children}
+    </SelectGroup>
   )
 }
 

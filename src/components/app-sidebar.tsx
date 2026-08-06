@@ -1,8 +1,8 @@
-import Link from "next/link"
+import Link from "next/link";
 
-import { NavMain, type NavItem } from "@/components/nav-main"
-import { NavProjects } from "@/components/nav-projects"
-import { NavUser } from "@/components/nav-user"
+import { NavMain, type NavItem } from "@/components/nav-main";
+import { NavProjects } from "@/components/nav-projects";
+import { NavUser } from "@/components/nav-user";
 import {
   Sidebar,
   SidebarContent,
@@ -13,29 +13,44 @@ import {
   SidebarMenuItem,
   SidebarRail,
   SidebarSeparator,
-} from "@/components/ui/sidebar"
-import type { UserRole } from "@/db/schema"
+} from "@/components/ui/sidebar";
+import type { UserRole } from "@/db/schema";
 
 export function AppSidebar({
   user,
   projects,
 }: {
-  user: { name: string; email: string; role: UserRole }
-  projects: { id: string; name: string; title: string }[]
+  user: { name: string; email: string; role: UserRole };
+  projects: { id: string; name: string; title: string }[];
 }) {
   const workspaceItems: NavItem[] = [
     { title: "Dashboard", href: "/dashboard", icon: "dashboard" },
-    { title: "All tickets", href: "/tickets", icon: "ticket", match: "tickets" },
+    {
+      title: "All tickets",
+      href: "/tickets",
+      icon: "ticket",
+      match: "tickets",
+    },
     { title: "Settings", href: "/settings", icon: "settings", match: "prefix" },
-  ]
+  ];
 
   const adminItems: NavItem[] =
     user.role === "admin"
       ? [
-          { title: "User management", href: "/admin/users", icon: "users", match: "prefix" },
-          { title: "Projects", href: "/admin/projects", icon: "projects", match: "prefix" },
+          {
+            title: "User management",
+            href: "/admin/users",
+            icon: "users",
+            match: "prefix",
+          },
+          {
+            title: "Projects",
+            href: "/admin/projects",
+            icon: "projects",
+            match: "prefix",
+          },
         ]
-      : []
+      : [];
 
   return (
     <Sidebar collapsible="icon" variant="inset">
@@ -47,12 +62,14 @@ export function AppSidebar({
               size="lg"
               tooltip="Ticketing"
             >
-              <span className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary shadow-sm">
+              <span className="flex aspect-square size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-sidebar-primary shadow-sm">
                 <img alt="" className="size-full object-cover" src="/qby.png" />
               </span>
               <span className="grid min-w-0 flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">Ticketing</span>
-                <span className="truncate text-xs text-muted-foreground">Internal service desk</span>
+                <span className="truncate text-xs text-muted-foreground">
+                  Internal service desk
+                </span>
               </span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -77,7 +94,9 @@ export function AppSidebar({
       <SidebarContent>
         <NavMain items={workspaceItems} label="Workspace" />
         <NavProjects projects={projects} />
-        {adminItems.length > 0 ? <NavMain items={adminItems} label="Administration" /> : null}
+        {adminItems.length > 0 ? (
+          <NavMain items={adminItems} label="Administration" />
+        ) : null}
       </SidebarContent>
 
       <SidebarSeparator />
@@ -86,5 +105,5 @@ export function AppSidebar({
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }

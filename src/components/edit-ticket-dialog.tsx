@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   NativeSelect,
   NativeSelectOption,
@@ -284,12 +285,11 @@ export function EditTicketDialog({
                   <CalendarDaysIcon className="size-3.5 text-muted-foreground" />
                   Due date
                 </Label>
-                <Input
+                <DatePicker
                   defaultValue={formatDueDate(ticket.dueDate)}
                   disabled={isPending}
                   id={fieldId("dueDate")}
                   name="dueDate"
-                  type="date"
                 />
                 <p className="text-xs text-muted-foreground">
                   Leave blank if the ticket has no target date.

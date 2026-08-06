@@ -1,8 +1,6 @@
 import Link from "next/link";
-import { CheckCircle2, ShieldCheck } from "lucide-react";
-import { loginAction } from "@/app/actions/auth";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { cookies } from "next/headers";
+import { ShieldCheck } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -10,8 +8,17 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { LoginForm } from "@/components/login-form";
+
+function decodeRememberedEmail(value: string | undefined) {
+  if (!value) return "";
+
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return "";
+  }
+}
 
 export default async function LoginPage({
   searchParams,
@@ -19,6 +26,10 @@ export default async function LoginPage({
   searchParams: Promise<{ registered?: string }>;
 }) {
   const { registered } = await searchParams;
+  const cookieStore = await cookies();
+  const rememberedEmail = decodeRememberedEmail(
+    cookieStore.get("ticketing_remembered_email")?.value,
+  );
 
   return (
     <main className="grid min-h-svh bg-muted/30 lg:grid-cols-[minmax(28rem,0.9fr)_1.1fr]">
@@ -41,52 +52,10 @@ export default async function LoginPage({
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <form action={loginAction} className="space-y-5">
-                {registered ? (
-                  <Alert className="border-amber-200 bg-amber-50 text-amber-900">
-                    <CheckCircle2 />
-                    <AlertTitle>Registration submitted</AlertTitle>
-                    <AlertDescription className="text-amber-800">
-                      An administrator must approve your account before you can
-                      sign in.
-                    </AlertDescription>
-                  </Alert>
-                ) : null}
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email address</Label>
-                  <Input
-                    autoComplete="email"
-                    autoFocus
-                    id="email"
-                    name="email"
-                    placeholder="you@company.com"
-                    required
-                    type="email"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
-                  <Input
-                    autoComplete="current-password"
-                    id="password"
-                    name="password"
-                    required
-                    type="password"
-                  />
-                </div>
-                <Button className="w-full" type="submit">
-                  Sign in
-                </Button>
-                <p className="text-center text-sm text-muted-foreground">
-                  Need access?{" "}
-                  <Link
-                    className="font-medium text-primary underline-offset-4 hover:underline"
-                    href="/register"
-                  >
-                    Request an account
-                  </Link>
-                </p>
-              </form>
+              <LoginForm
+                registered={Boolean(registered)}
+                rememberedEmail={rememberedEmail}
+              />
             </CardContent>
           </Card>
         </div>

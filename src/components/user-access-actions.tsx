@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Save, ShieldCheck, UserCog } from "lucide-react";
+import { LoaderCircle, Save, ShieldCheck, UserCog } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 import { updateUserAccessAction } from "@/app/actions/users";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -20,6 +21,7 @@ import {
   NativeSelect,
   NativeSelectOption,
 } from "@/components/ui/native-select";
+import { toast } from "@/components/ui/toast";
 import type { UserRole, UserStatus } from "@/db/schema";
 
 type ProjectOption = {
@@ -54,10 +56,46 @@ export function UserAccessActions({
   projects: ProjectOption[];
   user: ManageableUser;
 }) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const [isPending, startTransition] = React.useTransition();
   const userAccess = new Set(user.projectIds);
   const roleId = `role-${user.id}`;
   const statusId = `status-${user.id}`;
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (isPending) return;
+
+    setError(null);
+    const formData = new FormData(event.currentTarget);
+
+    startTransition(async () => {
+      try {
+        await updateUserAccessAction(formData);
+        setOpen(false);
+        router.refresh();
+        toast.add({
+          title: "User access saved",
+          description: `${user.name}'s permissions were updated.`,
+          type: "success",
+        });
+      } catch (submitError) {
+        const message =
+          submitError instanceof Error && submitError.message
+            ? submitError.message
+            : "User access could not be saved. Please try again.";
+        setError(message);
+        toast.add({
+          title: "User access not saved",
+          description: message,
+          type: "error",
+          priority: "high",
+        });
+      }
+    });
+  }
 
   return (
     <>
@@ -71,7 +109,13 @@ export function UserAccessActions({
         View permissions
       </Button>
 
-      <Dialog onOpenChange={setOpen} open={open}>
+      <Dialog
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (!nextOpen) setError(null);
+        }}
+        open={open}
+      >
         <DialogContent className="flex max-h-[calc(100svh-2rem)] max-w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-4xl">
           <DialogHeader className="border-b p-4 pr-12 sm:p-5 sm:pr-12">
             <div className="flex min-w-0 items-center gap-3">
@@ -92,7 +136,7 @@ export function UserAccessActions({
             </div>
           </DialogHeader>
 
-          <form action={updateUserAccessAction} className="flex min-h-0 flex-1 flex-col">
+          <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
             <input name="userId" type="hidden" value={user.id} />
             <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-5">
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
@@ -101,6 +145,7 @@ export function UserAccessActions({
                   <NativeSelect
                     className="w-full"
                     defaultValue={user.role}
+                    disabled={isPending}
                     id={roleId}
                     name="role"
                   >
@@ -114,6 +159,7 @@ export function UserAccessActions({
                   <NativeSelect
                     className="w-full"
                     defaultValue={user.status}
+                    disabled={isPending}
                     id={statusId}
                     name="status"
                   >
@@ -126,6 +172,7 @@ export function UserAccessActions({
                   <input
                     className="size-4 accent-primary"
                     defaultChecked={user.active}
+                    disabled={isPending}
                     name="active"
                     type="checkbox"
                   />
@@ -147,6 +194,7 @@ export function UserAccessActions({
                       <input
                         className="mt-0.5 size-4 accent-primary"
                         defaultChecked={userAccess.has(project.id)}
+                        disabled={isPending}
                         name="projectIds"
                         type="checkbox"
                         value={project.id}
@@ -163,12 +211,28 @@ export function UserAccessActions({
                   ))}
                 </div>
               </fieldset>
+              {error ? (
+                <div
+                  className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+                  role="alert"
+                >
+                  {error}
+                </div>
+              ) : null}
             </div>
 
             <DialogFooter className="mx-0 mb-0 rounded-none">
-              <Button type="submit">
-                <Save data-icon="inline-start" />
-                Save changes
+              <Button disabled={isPending} type="submit">
+                {isPending ? (
+                  <LoaderCircle
+                    aria-hidden="true"
+                    className="animate-spin"
+                    data-icon="inline-start"
+                  />
+                ) : (
+                  <Save data-icon="inline-start" />
+                )}
+                {isPending ? "Saving changes..." : "Save changes"}
               </Button>
             </DialogFooter>
           </form>

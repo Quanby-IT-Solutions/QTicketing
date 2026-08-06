@@ -1,10 +1,19 @@
 "use client";
 
 import * as React from "react";
-import { MessageSquareTextIcon, ReplyIcon } from "lucide-react";
-import { TicketCommentDialog } from "@/components/ticket-comment-dialog";
+import { useRouter } from "next/navigation";
+import { MessageSquareTextIcon, MoreHorizontalIcon, PencilIcon, ReplyIcon, Trash2Icon } from "lucide-react";
+import { addCommentAction, deleteCommentAction, updateCommentAction } from "@/app/actions/tickets";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type ConversationTicket = {
   id: string;
@@ -17,6 +26,7 @@ export type TicketConversationComment = {
   parentCommentId: string | null;
   authorName: string;
   body: string;
+  canManage?: boolean;
   createdAt: string;
   createdAtLabel: string;
 };
@@ -26,8 +36,9 @@ type CommentNode = TicketConversationComment & {
 };
 
 type ReplyTarget = {
-  id: string;
   authorName: string;
+  id: string;
+  submitParentCommentId: string;
 };
 
 function getInitials(name: string) {
@@ -78,13 +89,23 @@ function buildCommentTree(comments: TicketConversationComment[]) {
 }
 
 function CommentBranch({
+  activeReplyId,
   comment,
+  onCancelReply,
+  onRefresh,
   onReply,
+  ticket,
 }: {
+  activeReplyId: string | null;
   comment: CommentNode;
+  onCancelReply: () => void;
+  onRefresh?: () => Promise<void> | void;
   onReply: (comment: ReplyTarget) => void;
+  ticket: ConversationTicket;
 }) {
   const headingId = `comment-author-${comment.id}`;
+  const showReplyForm = activeReplyId === comment.id;
+  const [editing, setEditing] = React.useState(false);
 
   return (
     <div className="min-w-0 space-y-3" role="listitem">
@@ -95,32 +116,90 @@ function CommentBranch({
         <div className="min-w-0 flex-1 rounded-xl rounded-tl-sm border bg-muted/35 px-4 py-3">
           <div className="flex flex-wrap items-start justify-between gap-x-3 gap-y-1">
             <p className="text-sm font-medium" id={headingId}>{comment.authorName}</p>
-            <time className="text-xs text-muted-foreground" dateTime={comment.createdAt}>
-              {comment.createdAtLabel}
-            </time>
+            <div className="flex items-center gap-1">
+              <time className="text-xs text-muted-foreground" dateTime={comment.createdAt}>
+                {comment.createdAtLabel}
+              </time>
+              {comment.canManage ? (
+                <CommentActionsMenu
+                  commentId={comment.id}
+                  onDelete={async () => {
+                    if (!window.confirm("Delete this comment?")) return;
+                    const formData = new FormData();
+                    formData.set("ticketId", ticket.id);
+                    formData.set("commentId", comment.id);
+                    await deleteCommentAction(formData);
+                    if (onRefresh) await onRefresh();
+                  }}
+                  onEdit={() => {
+                    onCancelReply();
+                    setEditing(true);
+                  }}
+                />
+              ) : null}
+            </div>
           </div>
-          <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground/90">
-            {comment.body}
-          </p>
-          <div className="mt-2 flex justify-end">
-            <Button
-              aria-label={`Reply to ${comment.authorName}`}
-              onClick={() => onReply({ id: comment.id, authorName: comment.authorName })}
-              size="xs"
-              type="button"
-              variant="ghost"
-            >
-              <ReplyIcon data-icon="inline-start" />
-              Reply
-            </Button>
-          </div>
+          {editing ? (
+            <InlineEditCommentForm
+              comment={comment}
+              onCancel={() => setEditing(false)}
+              onRefresh={onRefresh}
+              ticket={ticket}
+            />
+          ) : (
+            <>
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground/90">
+                {comment.body}
+              </p>
+              <div className="mt-2 flex justify-end">
+                <Button
+                  aria-label={`Reply to ${comment.authorName}`}
+                  onClick={() => {
+                    if (showReplyForm) onCancelReply();
+                    else onReply({
+                      authorName: comment.authorName,
+                      id: comment.id,
+                      submitParentCommentId: comment.parentCommentId ?? comment.id,
+                    });
+                  }}
+                  size="xs"
+                  type="button"
+                  variant="ghost"
+                >
+                  <ReplyIcon data-icon="inline-start" />
+                  Reply
+                </Button>
+              </div>
+            </>
+          )}
         </div>
       </article>
+
+      {showReplyForm ? (
+        <InlineReplyForm
+          onCancel={onCancelReply}
+          onRefresh={onRefresh}
+          parentComment={{
+            authorName: comment.authorName,
+            id: comment.id,
+            submitParentCommentId: comment.parentCommentId ?? comment.id,
+          }}
+          ticket={ticket}
+        />
+      ) : null}
 
       {comment.replies.length > 0 ? (
         <div className="ml-3 space-y-3 border-l border-border/80 pl-3 sm:ml-8 sm:pl-5" role="list">
           {comment.replies.map((reply) => (
-            <CommentBranch comment={reply} key={reply.id} onReply={onReply} />
+            <CommentBranch
+              activeReplyId={activeReplyId}
+              comment={reply}
+              key={reply.id}
+              onCancelReply={onCancelReply}
+              onRefresh={onRefresh}
+              onReply={onReply}
+              ticket={ticket}
+            />
           ))}
         </div>
       ) : null}
@@ -128,15 +207,236 @@ function CommentBranch({
   );
 }
 
+function CommentActionsMenu({
+  commentId,
+  onDelete,
+  onEdit,
+}: {
+  commentId: string;
+  onDelete: () => Promise<void> | void;
+  onEdit: () => void;
+}) {
+  const [isDeleting, startDeleting] = React.useTransition();
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            aria-label={`Open comment actions for comment ${commentId}`}
+            disabled={isDeleting}
+            size="icon-xs"
+            type="button"
+            variant="ghost"
+          />
+        }
+      >
+        <MoreHorizontalIcon aria-hidden="true" />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-32">
+        <DropdownMenuItem onClick={onEdit}>
+          <PencilIcon data-icon="inline-start" />
+          Edit
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          onClick={() => {
+            startDeleting(async () => {
+              await onDelete();
+            });
+          }}
+          variant="destructive"
+        >
+          <Trash2Icon data-icon="inline-start" />
+          Delete
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message) return error.message;
+  return "Your reply could not be posted. Please try again.";
+}
+
+function InlineReplyForm({
+  onCancel,
+  onRefresh,
+  parentComment,
+  ticket,
+}: {
+  onCancel: () => void;
+  onRefresh?: () => Promise<void> | void;
+  parentComment: ReplyTarget;
+  ticket: ConversationTicket;
+}) {
+  const router = useRouter();
+  const [error, setError] = React.useState<string | null>(null);
+  const [isPending, startTransition] = React.useTransition();
+  const formRef = React.useRef<HTMLFormElement>(null);
+  const textareaId = React.useId();
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    const formData = new FormData(event.currentTarget);
+
+    startTransition(async () => {
+      try {
+        await addCommentAction(formData);
+        formRef.current?.reset();
+        onCancel();
+        if (onRefresh) await onRefresh();
+        else router.refresh();
+      } catch (submitError) {
+        setError(getErrorMessage(submitError));
+      }
+    });
+  }
+
+  return (
+    <form
+      aria-busy={isPending}
+      className="ml-11 space-y-3 rounded-xl border bg-background p-3 shadow-sm sm:ml-12"
+      onSubmit={handleSubmit}
+      ref={formRef}
+    >
+      <input name="ticketId" type="hidden" value={ticket.id} />
+      <input name="parentCommentId" type="hidden" value={parentComment.submitParentCommentId} />
+      <div className="space-y-2">
+        <Label htmlFor={textareaId}>Reply to {parentComment.authorName}</Label>
+        <Textarea
+          autoFocus
+          className="min-h-24 resize-y"
+          disabled={isPending}
+          id={textareaId}
+          maxLength={3000}
+          name="body"
+          placeholder={`Reply to ${parentComment.authorName}...`}
+          required
+        />
+        <p className="text-xs text-muted-foreground">
+          Everyone with access to this ticket can see this message.
+        </p>
+      </div>
+      {error ? (
+        <div
+          className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          {error}
+        </div>
+      ) : null}
+      <div className="flex justify-end gap-2">
+        <Button disabled={isPending} onClick={onCancel} type="button" variant="outline">
+          Cancel
+        </Button>
+        <Button disabled={isPending} type="submit">
+          <ReplyIcon data-icon="inline-start" />
+          {isPending ? "Posting..." : "Post reply"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+function InlineEditCommentForm({
+  comment,
+  onCancel,
+  onRefresh,
+  ticket,
+}: {
+  comment: CommentNode;
+  onCancel: () => void;
+  onRefresh?: () => Promise<void> | void;
+  ticket: ConversationTicket;
+}) {
+  const router = useRouter();
+  const [error, setError] = React.useState<string | null>(null);
+  const [isPending, startTransition] = React.useTransition();
+  const textareaId = React.useId();
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    const formData = new FormData(event.currentTarget);
+
+    startTransition(async () => {
+      try {
+        await updateCommentAction(formData);
+        onCancel();
+        if (onRefresh) await onRefresh();
+        else router.refresh();
+      } catch (submitError) {
+        setError(getErrorMessage(submitError));
+      }
+    });
+  }
+
+  return (
+    <form className="mt-3 space-y-3" onSubmit={handleSubmit}>
+      <input name="ticketId" type="hidden" value={ticket.id} />
+      <input name="commentId" type="hidden" value={comment.id} />
+      <div className="space-y-2">
+        <Label className="sr-only" htmlFor={textareaId}>
+          Edit comment
+        </Label>
+        <Textarea
+          autoFocus
+          className="min-h-24 resize-y bg-background"
+          defaultValue={comment.body}
+          disabled={isPending}
+          id={textareaId}
+          maxLength={3000}
+          name="body"
+          required
+        />
+      </div>
+      {error ? (
+        <div
+          className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          {error}
+        </div>
+      ) : null}
+      <div className="flex justify-end gap-2">
+        <Button disabled={isPending} onClick={onCancel} type="button" variant="outline">
+          Cancel
+        </Button>
+        <Button disabled={isPending} type="submit">
+          {isPending ? "Saving..." : "Save changes"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 export function TicketConversation({
   ticket,
   comments,
+  onRefresh,
 }: {
   ticket: ConversationTicket;
   comments: TicketConversationComment[];
+  onRefresh?: () => Promise<void> | void;
 }) {
+  const router = useRouter();
   const [replyTarget, setReplyTarget] = React.useState<ReplyTarget | null>(null);
   const commentTree = React.useMemo(() => buildCommentTree(comments), [comments]);
+  const refreshConversation = React.useCallback(async () => {
+    if (onRefresh) await onRefresh();
+    else router.refresh();
+  }, [onRefresh, router]);
+
+  React.useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      if (document.visibilityState !== "visible") return;
+      void refreshConversation();
+    }, 5000);
+
+    return () => window.clearInterval(intervalId);
+  }, [refreshConversation]);
 
   if (comments.length === 0) {
     return (
@@ -151,22 +451,18 @@ export function TicketConversation({
   }
 
   return (
-    <>
-      <div className="space-y-5" role="list">
-        {commentTree.map((comment) => (
-          <CommentBranch comment={comment} key={comment.id} onReply={setReplyTarget} />
-        ))}
-      </div>
-
-      <TicketCommentDialog
-        hideTrigger
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) setReplyTarget(null);
-        }}
-        open={replyTarget !== null}
-        parentComment={replyTarget}
-        ticket={ticket}
-      />
-    </>
+    <div className="space-y-5" role="list">
+      {commentTree.map((comment) => (
+        <CommentBranch
+          activeReplyId={replyTarget?.id ?? null}
+          comment={comment}
+          key={comment.id}
+          onCancelReply={() => setReplyTarget(null)}
+          onRefresh={refreshConversation}
+          onReply={setReplyTarget}
+          ticket={ticket}
+        />
+      ))}
+    </div>
   );
 }

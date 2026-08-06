@@ -115,11 +115,11 @@ export function SiteHeader({
             {user.role}
           </span>
         </div>
-        <CreateTicketButton
+        {/* <CreateTicketButton
           aria-label="Create a new ticket"
           label={<span className="hidden sm:inline">New ticket</span>}
           size="sm"
-        />
+        /> */}
       </div>
     </header>
   )

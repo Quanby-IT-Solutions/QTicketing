@@ -12,10 +12,9 @@ import {
   UserRound,
   XCircle,
 } from "lucide-react";
-import { requestProjectAccessAction } from "@/app/actions/project-access";
+import { ProjectAccessRequestForm } from "@/components/project-access-request-form";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -23,7 +22,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   Empty,
   EmptyDescription,
@@ -84,11 +82,6 @@ function RequestStatusBadge({ status }: { status: ProjectAccessRequestStatus }) 
   );
 }
 
-async function submitProjectAccessRequest(formData: FormData) {
-  "use server";
-  await requestProjectAccessAction(formData);
-}
-
 export default async function SettingsPage() {
   const user = await requireUser();
 
@@ -135,11 +128,6 @@ export default async function SettingsPage() {
   const pendingRequestCount = requestRows.filter(
     (request) => request.status === "pending",
   ).length;
-  const selectableProjectCount = activeProjects.filter((project) => {
-    const request = latestRequestByProject.get(project.id);
-    return !assignedProjectIds.has(project.id) && request?.status !== "pending";
-  }).length;
-
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <div>
@@ -306,87 +294,19 @@ export default async function SettingsPage() {
           ) : (
             <>
               {activeProjects.length > 0 ? (
-                <form action={submitProjectAccessRequest} className="space-y-5">
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                    {activeProjects.map((project) => {
-                      const assigned = assignedProjectIds.has(project.id);
-                      const request = latestRequestByProject.get(project.id);
-                      const pending = request?.status === "pending";
-                      const selectable = !assigned && !pending;
-                      const checkboxId = `request-project-${project.id}`;
-
-                      return (
-                        <label
-                          className={cn(
-                            "flex items-start gap-3 rounded-xl border p-4 transition-colors",
-                            selectable
-                              ? "cursor-pointer hover:border-primary/30 hover:bg-primary/5"
-                              : "cursor-not-allowed bg-muted/30 opacity-75",
-                          )}
-                          htmlFor={checkboxId}
-                          key={project.id}
-                        >
-                          <Checkbox
-                            className="mt-0.5"
-                            disabled={!selectable}
-                            id={checkboxId}
-                            name="projectIds"
-                            value={project.id}
-                          />
-                          <span className="min-w-0 flex-1">
-                            <span className="flex flex-wrap items-center justify-between gap-2">
-                              <span className="font-mono text-xs font-semibold">
-                                {project.name}
-                              </span>
-                              {assigned ? (
-                                <Badge
-                                  className="border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950 dark:text-emerald-300"
-                                  variant="outline"
-                                >
-                                  <CheckCircle2 />
-                                  Current access
-                                </Badge>
-                              ) : request ? (
-                                <RequestStatusBadge status={request.status} />
-                              ) : (
-                                <Badge variant="outline">Available</Badge>
-                              )}
-                            </span>
-                            <span className="mt-1 block text-sm text-muted-foreground">
-                              {project.title}
-                            </span>
-                            {request?.status === "rejected" ? (
-                              <span className="mt-2 block text-xs text-rose-600 dark:text-rose-400">
-                                You may select this project to submit a new request.
-                              </span>
-                            ) : request?.status === "approved" && !assigned ? (
-                              <span className="mt-2 block text-xs text-muted-foreground">
-                                Previously approved but not currently assigned; you
-                                may request it again.
-                              </span>
-                            ) : pending ? (
-                              <span className="mt-2 block text-xs text-amber-700 dark:text-amber-300">
-                                Waiting for administrator review.
-                              </span>
-                            ) : null}
-                          </span>
-                        </label>
-                      );
-                    })}
-                  </div>
-
-                  <div className="flex flex-col gap-3 border-t pt-5 sm:flex-row sm:items-center sm:justify-between">
-                    <p className="text-xs text-muted-foreground">
-                      {pendingRequestCount > 0
-                        ? `${pendingRequestCount} ${pendingRequestCount === 1 ? "request is" : "requests are"} currently pending.`
-                        : "Requests remain pending until an administrator reviews them."}
-                    </p>
-                    <Button disabled={selectableProjectCount === 0} type="submit">
-                      <Send data-icon="inline-start" />
-                      Submit request
-                    </Button>
-                  </div>
-                </form>
+                <ProjectAccessRequestForm
+                  assignedProjectIds={Array.from(assignedProjectIds)}
+                  latestRequests={requestRows.map((request) => ({
+                    projectId: request.projectId,
+                    status: request.status,
+                  }))}
+                  pendingRequestCount={pendingRequestCount}
+                  projects={activeProjects.map((project) => ({
+                    id: project.id,
+                    name: project.name,
+                    title: project.title,
+                  }))}
+                />
               ) : (
                 <Empty className="border">
                   <EmptyHeader>
