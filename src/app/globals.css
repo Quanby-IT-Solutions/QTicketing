@@ -131,3 +131,77 @@
 ::selection {
   background: color-mix(in oklch, var(--primary) 22%, transparent);
 }
+
+.login-hero-panel {
+  isolation: isolate;
+}
+
+.login-motion-shape {
+  position: absolute;
+  z-index: 0;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  opacity: 0.72;
+  filter: saturate(130%);
+  will-change: transform;
+}
+
+.login-motion-shape-a {
+  top: 8%;
+  right: -9rem;
+  width: 30rem;
+  height: 13rem;
+  background: linear-gradient(135deg, rgba(37, 99, 235, 0.75), rgba(6, 182, 212, 0.32));
+  animation: login-shape-drift-a 14s ease-in-out infinite alternate;
+}
+
+.login-motion-shape-b {
+  bottom: 10%;
+  left: -7rem;
+  width: 24rem;
+  height: 10rem;
+  background: linear-gradient(135deg, rgba(8, 145, 178, 0.58), rgba(59, 130, 246, 0.24));
+  animation: login-shape-drift-b 17s ease-in-out infinite alternate;
+}
+
+.login-motion-shape-c {
+  top: 42%;
+  right: 12%;
+  width: 16rem;
+  height: 7rem;
+  background: rgba(14, 165, 233, 0.18);
+  animation: login-shape-drift-c 19s ease-in-out infinite alternate;
+}
+
+@keyframes login-shape-drift-a {
+  from {
+    transform: translate3d(0, 0, 0) rotate(-10deg);
+  }
+  to {
+    transform: translate3d(-5rem, 2.5rem, 0) rotate(8deg);
+  }
+}
+
+@keyframes login-shape-drift-b {
+  from {
+    transform: translate3d(0, 0, 0) rotate(12deg);
+  }
+  to {
+    transform: translate3d(4rem, -2rem, 0) rotate(-8deg);
+  }
+}
+
+@keyframes login-shape-drift-c {
+  from {
+    transform: translate3d(0, 0, 0) rotate(18deg);
+  }
+  to {
+    transform: translate3d(-2rem, -3rem, 0) rotate(-14deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .login-motion-shape {
+    animation: none;
+  }
+}

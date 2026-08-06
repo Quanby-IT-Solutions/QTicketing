@@ -1,12 +1,62 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
+import { ArrowLeft, LockKeyhole } from "lucide-react";
 import { db } from "@/db";
 import { projects, tickets, userProjects, users } from "@/db/schema";
 import { CreateTicketButton } from "@/components/create-ticket-dialog";
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
 import { TicketsTable } from "@/components/tickets-table";
 import { requireUser } from "@/lib/auth";
 import { canEditTicket } from "@/lib/permissions";
+import { cn } from "@/lib/utils";
+
+function RestrictedProjectAccess({
+  project,
+}: {
+  project: { name: string; title: string };
+}) {
+  return (
+    <div className="mx-auto flex min-h-[calc(100svh-12rem)] w-full max-w-4xl items-center justify-center px-4">
+      <Card className="w-full border-amber-200 bg-amber-50/40">
+        <CardContent className="flex flex-col items-center px-6 py-12 text-center">
+          <span className="mb-5 flex size-14 items-center justify-center rounded-2xl bg-amber-100 text-amber-700 ring-1 ring-amber-200">
+            <LockKeyhole className="size-7" />
+          </span>
+          <Badge className="mb-3 font-mono" variant="outline">
+            {project.name}
+          </Badge>
+          <h1 className="font-heading text-2xl font-semibold tracking-tight">
+            Restricted project access
+          </h1>
+          <p className="mt-3 max-w-xl text-sm leading-6 text-muted-foreground">
+            Your account does not currently have permission to view tickets for{" "}
+            <span className="font-medium text-foreground">{project.title}</span>.
+            Ask an administrator to add this project to your account, or request
+            access from Settings.
+          </p>
+          <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+            <Link
+              className={cn(buttonVariants({ variant: "outline" }), "justify-center")}
+              href="/tickets"
+            >
+              <ArrowLeft data-icon="inline-start" />
+              Back to tickets
+            </Link>
+            <Link
+              className={cn(buttonVariants(), "justify-center")}
+              href="/settings"
+            >
+              Request project access
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
 
 export default async function ProjectTicketsPage({ params }: { params: Promise<{ projectCode: string }> }) {
   const { projectCode } = await params;
@@ -22,7 +72,7 @@ export default async function ProjectTicketsPage({ params }: { params: Promise<{
       .from(userProjects)
       .where(eq(userProjects.userId, user.id))
       .then((rows) => rows.some((row) => row.projectId === project.id));
-    if (!access) notFound();
+    if (!access) return <RestrictedProjectAccess project={project} />;
   }
 
   const ticketRows = await db

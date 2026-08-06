@@ -1,5 +1,4 @@
 import Link from "next/link"
-import { ShieldCheck } from "lucide-react"
 
 import { NavMain, type NavItem } from "@/components/nav-main"
 import { NavProjects } from "@/components/nav-projects"
@@ -48,8 +47,8 @@ export function AppSidebar({
               size="lg"
               tooltip="Ticketing"
             >
-              <span className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground shadow-sm">
-                <ShieldCheck className="size-4" />
+              <span className="flex aspect-square size-8 items-center justify-center overflow-hidden rounded-lg bg-sidebar-primary shadow-sm">
+                <img alt="" className="size-full object-cover" src="/qby.png" />
               </span>
               <span className="grid min-w-0 flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-semibold">Ticketing</span>
