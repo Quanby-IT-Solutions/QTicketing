@@ -1,0 +1,4 @@
+Failed to extract relations. This is likely due to ambiguous or misconfigured relations.
+Please check your schema and ensure that all relations are correctly defined.
+See: https://orm.drizzle.team/docs/relations#disambiguating-relations
+Error message: Invalid relation "comments" for table "tickets"

@@ -1,0 +1,19 @@
+
+> ticketing@0.1.0 dev C:\2026\ticketing
+> next dev "--hostname" "127.0.0.1" "--port" "3001"
+
+▲ Next.js 16.3.0 (Turbopack)
+- Local:         http://127.0.0.1:3001
+- Network:       http://127.0.0.1:3001
+- Environments: .env
+✓ Ready in 715ms
+✓ Running next.config.ts took 32ms
+
+✓ Generated AGENTS.md for AI agents. Set `agentRules: false` in next.config to disable.
+▲ Next.js 16.3.0 (Turbopack)
+- Local:         http://127.0.0.1:3001
+- Network:       http://127.0.0.1:3001
+- Environments: .env
+✓ Ready in 653ms
+✓ Running next.config.ts took 39ms
+

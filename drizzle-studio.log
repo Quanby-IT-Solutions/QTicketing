@@ -1,0 +1,12 @@
+
+> ticketing@0.1.0 db:studio C:\2026\ticketing
+> drizzle-kit studio --host 127.0.0.1 --port 4984
+
+No config path provided, using default 'drizzle.config.ts'
+Reading config file 'C:\2026\ticketing\drizzle.config.ts'
+Using 'postgres' driver for database querying
+
+ Warning  Drizzle Studio is currently in Beta. If you find anything that is not working as expected or should be improved, feel free to create an issue on GitHub: https://github.com/drizzle-team/drizzle-kit-mirror/issues/new or write to us on Discord: https://discord.gg/WcRKz2FFxN
+
+Drizzle Studio is up and running on https://local.drizzle.studio?port=4984
+ ELIFECYCLE  Command failed with exit code 4294967295.
