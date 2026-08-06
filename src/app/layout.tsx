@@ -12,6 +12,11 @@ export const metadata: Metadata = {
     template: "%s | Ticketing Portal",
   },
   description: "Internal project support and ticket management workspace.",
+  icons: {
+    icon: "/qby.png",
+    shortcut: "/qby.png",
+    apple: "/qby.png",
+  },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
