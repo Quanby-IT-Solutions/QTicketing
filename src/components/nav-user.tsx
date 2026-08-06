@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { ChevronsUpDown, LogOut, Settings2 } from "lucide-react"
+import { useFormStatus } from "react-dom"
 
 import { logoutAction } from "@/app/actions/auth"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
@@ -21,6 +22,22 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import type { UserRole } from "@/db/schema"
+
+function LogoutButton() {
+  const { pending } = useFormStatus()
+
+  return (
+    <DropdownMenuItem
+      className="w-full"
+      disabled={pending}
+      nativeButton
+      render={<button type="submit" />}
+    >
+      <LogOut className={pending ? "animate-pulse" : undefined} />
+      {pending ? "Logging out..." : "Log out"}
+    </DropdownMenuItem>
+  )
+}
 
 function getInitials(name: string, email: string) {
   const parts = name.trim().split(/\s+/).filter(Boolean)
@@ -94,15 +111,12 @@ export function NavUser({
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <form action={logoutAction}>
-              <DropdownMenuItem
-                className="w-full"
-                nativeButton
-                render={<button type="submit" />}
-              >
-                <LogOut />
-                Log out
-              </DropdownMenuItem>
+            <form
+              action={logoutAction}
+              data-loading-message="Logging you out..."
+              data-page-loading="true"
+            >
+              <LogoutButton />
             </form>
           </DropdownMenuContent>
         </DropdownMenu>

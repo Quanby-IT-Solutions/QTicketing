@@ -207,7 +207,7 @@ export function CreateTicketButton({
         event.preventDefault()
         openTicketDialog(project)
       }}
-      render={<Link href={fallbackHref} />}
+      render={<Link data-no-page-loading href={fallbackHref} />}
     >
       <Plus aria-hidden="true" data-icon="inline-start" />
       {label}

@@ -2,7 +2,8 @@ import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { ArrowLeft, FolderKanban, Send, TicketCheck } from "lucide-react";
 import { registerAction } from "@/app/actions/auth";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -32,7 +33,12 @@ export default async function RegisterPage() {
             <CardDescription>Create your profile and choose the project queues you need. An administrator will review your request.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form action={registerAction} className="space-y-6">
+            <form
+              action={registerAction}
+              className="space-y-6"
+              data-loading-message="Submitting your registration..."
+              data-page-loading="true"
+            >
               <div className="grid gap-5 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full name</Label>
@@ -64,7 +70,10 @@ export default async function RegisterPage() {
 
               <div className="flex flex-col-reverse gap-2 border-t pt-5 sm:flex-row sm:justify-end">
                 <Link className={cn(buttonVariants({ variant: "outline" }), "justify-center")} href="/login">Cancel</Link>
-                <Button type="submit"><Send data-icon="inline-start" />Submit for approval</Button>
+                <PendingSubmitButton pendingLabel="Submitting..." type="submit">
+                  <Send data-icon="inline-start" />
+                  Submit for approval
+                </PendingSubmitButton>
               </div>
             </form>
           </CardContent>

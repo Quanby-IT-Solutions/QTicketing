@@ -5,8 +5,8 @@ import Link from "next/link";
 import { CheckCircle2 } from "lucide-react";
 
 import { loginAction } from "@/app/actions/auth";
+import { PendingSubmitButton } from "@/components/pending-submit-button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +35,13 @@ export function LoginForm({
   }
 
   return (
-    <form action={loginAction} className="space-y-5" onSubmit={handleSubmit}>
+    <form
+      action={loginAction}
+      className="space-y-5"
+      data-loading-message="Signing you in..."
+      data-page-loading="true"
+      onSubmit={handleSubmit}
+    >
       {registered ? (
         <Alert className="border-amber-200 bg-amber-50 text-amber-900">
           <CheckCircle2 />
@@ -79,9 +85,9 @@ export function LoginForm({
           Remember me
         </Label>
       </div>
-      <Button className="w-full" type="submit">
+      <PendingSubmitButton className="w-full" pendingLabel="Signing in..." type="submit">
         Sign in
-      </Button>
+      </PendingSubmitButton>
       <p className="text-center text-sm text-muted-foreground">
         Need access?{" "}
         <Link

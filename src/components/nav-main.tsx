@@ -94,6 +94,7 @@ export function NavMain({
                   render={
                     <Link
                       aria-current={active ? "page" : undefined}
+                      data-no-page-loading={item.action === "create-ticket" ? "" : undefined}
                       href={href}
                       onClick={(event) => {
                         if (item.action === "create-ticket") {

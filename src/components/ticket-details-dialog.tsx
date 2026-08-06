@@ -111,8 +111,15 @@ function TicketDetailsContent({
   details: TicketDetails;
   onRefresh: () => Promise<void>;
 }) {
-  const { assignee, attachments, comments, history, project, requester, ticket } =
-    details;
+  const {
+    assignee,
+    attachments,
+    comments,
+    history,
+    project,
+    requester,
+    ticket,
+  } = details;
 
   return (
     <div className="min-h-0 overflow-y-auto px-4 py-5 sm:px-6">
@@ -258,14 +265,18 @@ function TicketDetailsContent({
             <CardHeader className="border-b">
               <CardTitle>Status history</CardTitle>
               <CardDescription>
-                {history.length} recorded {history.length === 1 ? "event" : "events"}
+                {history.length} recorded{" "}
+                {history.length === 1 ? "event" : "events"}
               </CardDescription>
             </CardHeader>
             <CardContent className="max-h-80 overflow-y-auto overscroll-contain pr-3">
               {history.length > 0 ? (
                 <ol className="space-y-0">
                   {history.map((entry, index) => (
-                    <li className="relative flex gap-3 pb-5 last:pb-0" key={entry.id}>
+                    <li
+                      className="relative flex gap-3 pb-5 last:pb-0"
+                      key={entry.id}
+                    >
                       {index < history.length - 1 ? (
                         <span className="absolute left-[5px] top-3 h-[calc(100%-0.25rem)] w-px bg-border" />
                       ) : null}
@@ -314,11 +325,13 @@ export function TicketDetailsDialog({
   onOpenChange,
 }: TicketDetailsDialogProps) {
   const [details, setDetails] = React.useState<TicketDetails | null>(null);
-  const [error, setError] = React.useState<{ ticketId: string; message: string } | null>(null);
+  const [error, setError] = React.useState<{
+    ticketId: string;
+    message: string;
+  } | null>(null);
   const [editOpen, setEditOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
-  const currentDetails =
-    details?.ticket.id === ticket.id ? details : null;
+  const currentDetails = details?.ticket.id === ticket.id ? details : null;
   const currentError = error?.ticketId === ticket.id ? error.message : null;
   const refreshDetails = React.useCallback(async () => {
     try {
@@ -354,7 +367,9 @@ export function TicketDetailsDialog({
                   <span className="rounded-md bg-muted px-2 py-1 font-mono text-xs font-medium">
                     TKT-{ticket.ticketNumber}
                   </span>
-                  {currentDetails ? <span>Created {currentDetails.ticket.createdAtLabel}</span> : null}
+                  {currentDetails ? (
+                    <span>Created {currentDetails.ticket.createdAtLabel}</span>
+                  ) : null}
                 </div>
                 <DialogTitle className="max-w-3xl break-words text-lg sm:text-xl">
                   {ticket.title}
@@ -366,9 +381,13 @@ export function TicketDetailsDialog({
                 </DialogDescription>
               </div>
               <div className="flex shrink-0 flex-wrap gap-2">
-                <TicketStatusBadge status={currentDetails?.ticket.status ?? ticket.status} />
-                <TicketPriorityBadge priority={currentDetails?.ticket.priority ?? ticket.priority} />
-                {currentDetails?.ticket.canEdit ? (
+                <TicketStatusBadge
+                  status={currentDetails?.ticket.status ?? ticket.status}
+                />
+                <TicketPriorityBadge
+                  priority={currentDetails?.ticket.priority ?? ticket.priority}
+                />
+                {/* {currentDetails?.ticket.canEdit ? (
                   <Button
                     onClick={() => {
                       onOpenChange(false);
@@ -380,7 +399,7 @@ export function TicketDetailsDialog({
                     <PencilIcon data-icon="inline-start" />
                     Edit ticket
                   </Button>
-                ) : null}
+                ) : null} */}
               </div>
             </div>
           </DialogHeader>
@@ -392,7 +411,10 @@ export function TicketDetailsDialog({
               </div>
             </div>
           ) : currentDetails ? (
-            <TicketDetailsContent details={currentDetails} onRefresh={refreshDetails} />
+            <TicketDetailsContent
+              details={currentDetails}
+              onRefresh={refreshDetails}
+            />
           ) : (
             <div className="flex min-h-96 flex-col">
               <div className="flex items-center gap-2 border-b px-5 py-3 text-sm text-muted-foreground">
