@@ -4,6 +4,7 @@ import * as React from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircleIcon, MessageSquarePlusIcon, ReplyIcon, SendIcon } from "lucide-react";
 import { addCommentAction } from "@/app/actions/tickets";
+import { TicketCommentAttachmentField } from "@/components/ticket-comment-attachment-field";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -57,6 +58,7 @@ export function TicketCommentDialog({
   const router = useRouter();
   const [internalOpen, setInternalOpen] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [files, setFiles] = React.useState<File[]>([]);
   const [isPending, startTransition] = React.useTransition();
   const formRef = React.useRef<HTMLFormElement>(null);
   const textareaId = React.useId();
@@ -66,6 +68,7 @@ export function TicketCommentDialog({
   function setOpen(nextOpen: boolean) {
     if (!nextOpen) {
       setError(null);
+      setFiles([]);
       formRef.current?.reset();
     }
     if (!isControlled) setInternalOpen(nextOpen);
@@ -76,6 +79,7 @@ export function TicketCommentDialog({
     event.preventDefault();
     setError(null);
     const formData = new FormData(event.currentTarget);
+    for (const file of files) formData.append("attachments", file);
 
     startTransition(async () => {
       try {
@@ -138,6 +142,13 @@ export function TicketCommentDialog({
               Everyone with access to this ticket can see this message.
             </p>
           </div>
+
+          <TicketCommentAttachmentField
+            disabled={isPending}
+            files={files}
+            inputId={`${textareaId}-attachments`}
+            onFilesChange={setFiles}
+          />
 
           {error ? (
             <div

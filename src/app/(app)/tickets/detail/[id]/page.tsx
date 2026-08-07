@@ -92,10 +92,22 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     .orderBy(asc(ticketStatusHistory.createdAt));
   const attachmentLinks = await Promise.all(
     attachments.map(async (attachment) => ({
-      ...attachment,
+      id: attachment.id,
+      commentId: attachment.commentId,
+      filename: attachment.filename,
+      mimeType: attachment.mimeType,
+      size: attachment.size,
       url: await getAttachmentDownloadUrl(attachment.objectKey),
     })),
   );
+  const ticketAttachmentLinks = attachmentLinks.filter((link) => link.commentId === null);
+  const commentAttachmentLinks = new Map<string, Array<(typeof attachmentLinks)[number]>>();
+  for (const link of attachmentLinks) {
+    if (!link.commentId) continue;
+    const links = commentAttachmentLinks.get(link.commentId) ?? [];
+    links.push(link);
+    commentAttachmentLinks.set(link.commentId, links);
+  }
 
   const projectHref = project ? `/tickets/${encodeURIComponent(project.name)}` : "/tickets";
 
@@ -161,14 +173,14 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
               <CardTitle className="flex items-center gap-2">
                 <Paperclip className="size-4 text-primary" />
                 Attachments
-                <span className="ml-1 text-xs font-normal text-muted-foreground">({attachmentLinks.length})</span>
+                <span className="ml-1 text-xs font-normal text-muted-foreground">({ticketAttachmentLinks.length})</span>
               </CardTitle>
               <CardDescription>Supporting files provided with this request.</CardDescription>
             </CardHeader>
             <CardContent>
-              {attachmentLinks.length > 0 ? (
+              {ticketAttachmentLinks.length > 0 ? (
                 <div className="grid gap-3 sm:grid-cols-2">
-                  {attachmentLinks.map((attachment) => (
+                  {ticketAttachmentLinks.map((attachment) => (
                     <a
                       className="group flex min-w-0 items-center gap-3 rounded-xl border p-3 transition-colors hover:bg-muted/50"
                       href={attachment.url}
@@ -222,6 +234,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                   canManage: comment.authorId === user.id || user.role === "admin",
                   createdAt: comment.createdAt.toISOString(),
                   createdAtLabel: comment.createdAt.toLocaleString(),
+                  attachments: commentAttachmentLinks.get(comment.id) ?? [],
                 }))}
                 ticket={{
                   id: ticket.id,

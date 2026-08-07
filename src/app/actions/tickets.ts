@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { and, asc, eq } from "drizzle-orm";
+import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { projects, ticketAttachments, ticketComments, tickets, ticketStatusHistory, userProjects, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
@@ -16,7 +16,8 @@ import {
   updateTicketInlineSchema,
   updateTicketSchema,
 } from "@/lib/validation";
-import { deleteTicketAttachments, getAttachmentDownloadUrl, uploadTicketAttachment } from "@/lib/storage";
+import { collectCommentSubtree } from "@/lib/comment-tree";
+import { attachmentSizeErrorMessage, deleteTicketAttachments, getAttachmentDownloadUrl, maxAttachmentBytes, uploadTicketAttachment } from "@/lib/storage";
 
 type CurrentUser = Awaited<ReturnType<typeof requireUser>>;
 type UserWithRole = {
@@ -224,12 +225,21 @@ export async function getTicketDetailsAction(ticketId: string) {
   const attachmentLinks = await Promise.all(
     attachments.map(async (attachment) => ({
       id: attachment.id,
+      commentId: attachment.commentId,
       filename: attachment.filename,
       mimeType: attachment.mimeType,
       size: attachment.size,
       url: await getAttachmentDownloadUrl(attachment.objectKey),
     })),
   );
+  const ticketAttachmentLinks = attachmentLinks.filter((link) => link.commentId === null);
+  const commentAttachmentLinks = new Map<string, Array<(typeof attachmentLinks)[number]>>();
+  for (const link of attachmentLinks) {
+    if (!link.commentId) continue;
+    const links = commentAttachmentLinks.get(link.commentId) ?? [];
+    links.push(link);
+    commentAttachmentLinks.set(link.commentId, links);
+  }
 
   return {
     ticket: {
@@ -257,8 +267,9 @@ export async function getTicketDetailsAction(ticketId: string) {
       canManage: comment.authorId === user.id || user.role === "admin",
       createdAt: comment.createdAt.toISOString(),
       createdAtLabel: comment.createdAt.toLocaleString(),
+      attachments: commentAttachmentLinks.get(comment.id) ?? [],
     })),
-    attachments: attachmentLinks,
+    attachments: ticketAttachmentLinks,
     history: history.map((entry) => ({
       ...entry,
       createdAt: entry.createdAt.toISOString(),
@@ -457,23 +468,62 @@ export async function addCommentAction(formData: FormData) {
     }
   }
 
-  const [comment] = await db.transaction(async (tx) => {
-    const inserted = await tx
-      .insert(ticketComments)
-      .values({
-        ticketId: parsed.ticketId,
-        authorId: user.id,
-        parentCommentId: parsed.parentCommentId ?? null,
-        body: parsed.body,
-      })
-      .returning({ id: ticketComments.id });
+  const attachmentFiles = getAttachmentFiles(formData);
+  for (const file of attachmentFiles) {
+    if (file.size > maxAttachmentBytes) {
+      throw new Error(attachmentSizeErrorMessage);
+    }
+  }
 
-    await tx.update(tickets).set({ updatedAt: new Date() }).where(eq(tickets.id, parsed.ticketId));
+  // Upload to S3 before creating the comment so a failed upload never leaves a
+  // persisted comment that the UI reported as failed.
+  const uploadedAttachments: Awaited<ReturnType<typeof uploadTicketAttachment>>[] = [];
+  try {
+    for (const file of attachmentFiles) {
+      uploadedAttachments.push(await uploadTicketAttachment(parsed.ticketId, file));
+    }
+  } catch (uploadError) {
+    if (uploadedAttachments.length > 0) {
+      await deleteTicketAttachments(uploadedAttachments.map((uploaded) => uploaded.objectKey)).catch(() => {});
+    }
+    throw uploadError;
+  }
 
-    return inserted;
-  });
+  let commentId: string | null = null;
+  try {
+    const [comment] = await db.transaction(async (tx) => {
+      const inserted = await tx
+        .insert(ticketComments)
+        .values({
+          ticketId: parsed.ticketId,
+          authorId: user.id,
+          parentCommentId: parsed.parentCommentId ?? null,
+          body: parsed.body,
+        })
+        .returning({ id: ticketComments.id });
 
-  if (!comment) throw new Error("Comment could not be added.");
+      for (const uploaded of uploadedAttachments) {
+        await tx.insert(ticketAttachments).values({
+          ticketId: parsed.ticketId,
+          commentId: inserted[0].id,
+          uploaderId: user.id,
+          ...uploaded,
+        });
+      }
+
+      await tx.update(tickets).set({ updatedAt: new Date() }).where(eq(tickets.id, parsed.ticketId));
+
+      return inserted;
+    });
+    commentId = comment?.id ?? null;
+  } catch (dbError) {
+    if (uploadedAttachments.length > 0) {
+      await deleteTicketAttachments(uploadedAttachments.map((uploaded) => uploaded.objectKey)).catch(() => {});
+    }
+    throw dbError;
+  }
+
+  if (!commentId) throw new Error("Comment could not be added.");
 
   await revalidateTicketPaths({
     ticketId: parsed.ticketId,
@@ -481,7 +531,7 @@ export async function addCommentAction(formData: FormData) {
     includeDetail: true,
   });
 
-  return { commentId: comment.id };
+  return { commentId };
 }
 
 async function getManageableComment({
@@ -556,8 +606,34 @@ export async function deleteCommentAction(formData: FormData) {
     user,
   });
 
+  // Replies cascade on comment deletion, so clean up the S3 objects of the
+  // whole reply subtree, not just the comment itself.
+  const ticketCommentsForSubtree = await db
+    .select({ id: ticketComments.id, parentCommentId: ticketComments.parentCommentId })
+    .from(ticketComments)
+    .where(eq(ticketComments.ticketId, comment.ticketId));
+  const commentIds = collectCommentSubtree(parsed.commentId, ticketCommentsForSubtree);
+
+  const attachments =
+    commentIds.length > 0
+      ? await db
+          .select({ objectKey: ticketAttachments.objectKey })
+          .from(ticketAttachments)
+          .where(inArray(ticketAttachments.commentId, commentIds))
+      : [];
+
+  // Attachment rows cascade on comment deletion.
   await db.delete(ticketComments).where(eq(ticketComments.id, parsed.commentId));
   await db.update(tickets).set({ updatedAt: new Date() }).where(eq(tickets.id, parsed.ticketId));
+
+  if (attachments.length > 0) {
+    try {
+      await deleteTicketAttachments(attachments.map((attachment) => attachment.objectKey));
+    } catch (cleanupError) {
+      // The database rows are the source of truth; S3 cleanup is best-effort.
+      console.error("Failed to clean up S3 attachments for comment", parsed.commentId, cleanupError);
+    }
+  }
 
   await revalidateTicketPaths({
     ticketId: parsed.ticketId,

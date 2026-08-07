@@ -131,16 +131,23 @@ export const ticketComments = pgTable(
   }),
 );
 
-export const ticketAttachments = pgTable("ticket_attachments", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  ticketId: uuid("ticket_id").notNull().references(() => tickets.id, { onDelete: "cascade" }),
-  uploaderId: uuid("uploader_id").notNull().references(() => users.id),
-  objectKey: text("object_key").notNull(),
-  filename: varchar("filename", { length: 255 }).notNull(),
-  mimeType: varchar("mime_type", { length: 160 }).notNull(),
-  size: integer("size").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const ticketAttachments = pgTable(
+  "ticket_attachments",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    ticketId: uuid("ticket_id").notNull().references(() => tickets.id, { onDelete: "cascade" }),
+    commentId: uuid("comment_id").references(() => ticketComments.id, { onDelete: "cascade" }),
+    uploaderId: uuid("uploader_id").notNull().references(() => users.id),
+    objectKey: text("object_key").notNull(),
+    filename: varchar("filename", { length: 255 }).notNull(),
+    mimeType: varchar("mime_type", { length: 160 }).notNull(),
+    size: integer("size").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    commentIdx: index("ticket_attachments_comment_idx").on(table.commentId),
+  }),
+);
 
 export const ticketStatusHistory = pgTable("ticket_status_history", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -169,6 +176,7 @@ export const ticketCommentRelations = relations(ticketComments, ({ one, many }) 
     relationName: "commentReplies",
   }),
   replies: many(ticketComments, { relationName: "commentReplies" }),
+  attachments: many(ticketAttachments),
 }));
 
 export const userRelations = relations(users, ({ many }) => ({

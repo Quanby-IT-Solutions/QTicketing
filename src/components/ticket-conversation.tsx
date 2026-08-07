@@ -2,8 +2,9 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { MessageSquareTextIcon, MoreHorizontalIcon, PencilIcon, ReplyIcon, Trash2Icon } from "lucide-react";
+import { DownloadIcon, FileTextIcon, MessageSquareTextIcon, MoreHorizontalIcon, PencilIcon, ReplyIcon, Trash2Icon } from "lucide-react";
 import { addCommentAction, deleteCommentAction, updateCommentAction } from "@/app/actions/tickets";
+import { TicketCommentAttachmentField, formatFileSize } from "@/components/ticket-comment-attachment-field";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +22,14 @@ type ConversationTicket = {
   title: string;
 };
 
+export type TicketConversationCommentAttachment = {
+  id: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  url: string;
+};
+
 export type TicketConversationComment = {
   id: string;
   parentCommentId: string | null;
@@ -29,6 +38,7 @@ export type TicketConversationComment = {
   canManage?: boolean;
   createdAt: string;
   createdAtLabel: string;
+  attachments: TicketConversationCommentAttachment[];
 };
 
 type CommentNode = TicketConversationComment & {
@@ -151,6 +161,28 @@ function CommentBranch({
               <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-6 text-foreground/90">
                 {comment.body}
               </p>
+              {comment.attachments.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {comment.attachments.map((attachment) => (
+                    <a
+                      className="group flex min-w-0 items-center gap-2 rounded-lg border bg-background py-1.5 pl-2.5 pr-2 text-xs transition-colors hover:bg-muted/50"
+                      href={attachment.url}
+                      key={attachment.id}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      <FileTextIcon className="size-3.5 shrink-0 text-primary" />
+                      <span className="block max-w-52 truncate font-medium">
+                        {attachment.filename}
+                      </span>
+                      <span className="shrink-0 text-muted-foreground">
+                        {formatFileSize(attachment.size)}
+                      </span>
+                      <DownloadIcon className="size-3.5 shrink-0 text-muted-foreground transition-colors group-hover:text-primary" />
+                    </a>
+                  ))}
+                </div>
+              ) : null}
               <div className="mt-2 flex justify-end">
                 <Button
                   aria-label={`Reply to ${comment.authorName}`}
@@ -272,6 +304,7 @@ function InlineReplyForm({
 }) {
   const router = useRouter();
   const [error, setError] = React.useState<string | null>(null);
+  const [files, setFiles] = React.useState<File[]>([]);
   const [isPending, startTransition] = React.useTransition();
   const formRef = React.useRef<HTMLFormElement>(null);
   const textareaId = React.useId();
@@ -280,6 +313,7 @@ function InlineReplyForm({
     event.preventDefault();
     setError(null);
     const formData = new FormData(event.currentTarget);
+    for (const file of files) formData.append("attachments", file);
 
     startTransition(async () => {
       try {
@@ -319,6 +353,12 @@ function InlineReplyForm({
           Everyone with access to this ticket can see this message.
         </p>
       </div>
+      <TicketCommentAttachmentField
+        disabled={isPending}
+        files={files}
+        inputId={`${textareaId}-attachments`}
+        onFilesChange={setFiles}
+      />
       {error ? (
         <div
           className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
