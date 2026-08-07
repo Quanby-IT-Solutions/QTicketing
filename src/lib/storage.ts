@@ -1,6 +1,6 @@
 import "server-only";
 
-import { GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { randomUUID } from "crypto";
 import { env } from "@/lib/env";
@@ -39,6 +39,21 @@ export async function uploadTicketAttachment(ticketId: string, file: File) {
     mimeType: file.type || "application/octet-stream",
     size: file.size,
   };
+}
+
+export async function deleteTicketAttachments(objectKeys: string[]) {
+  if (objectKeys.length === 0) return;
+
+  await Promise.all(
+    objectKeys.map((objectKey) =>
+      s3.send(
+        new DeleteObjectCommand({
+          Bucket: env.S3_BUCKET_NAME,
+          Key: objectKey,
+        }),
+      ),
+    ),
+  );
 }
 
 export async function getAttachmentDownloadUrl(objectKey: string) {

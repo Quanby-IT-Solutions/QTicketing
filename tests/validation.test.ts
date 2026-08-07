@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   commentSchema,
   createTicketSchema,
+  deleteTicketSchema,
   requestProjectAccessSchema,
   reviewProjectAccessSchema,
   ticketPrioritySchema,
@@ -60,6 +61,16 @@ describe("ticket validation", () => {
     expect(updateTicketSchema.safeParse({ ...validUpdate, ticketId: "not-a-uuid" }).success).toBe(false);
     expect(updateTicketSchema.safeParse({ ...validUpdate, status: "closed" }).success).toBe(false);
     expect(updateTicketSchema.safeParse({ ...validUpdate, title: "No" }).success).toBe(false);
+  });
+});
+
+describe("ticket deletion validation", () => {
+  it("requires a valid ticket ID", () => {
+    expect(
+      deleteTicketSchema.safeParse({ ticketId: "550e8400-e29b-41d4-a716-446655440000" }).success,
+    ).toBe(true);
+    expect(deleteTicketSchema.safeParse({ ticketId: "not-a-uuid" }).success).toBe(false);
+    expect(deleteTicketSchema.safeParse({}).success).toBe(false);
   });
 });
 

@@ -82,6 +82,7 @@ export type TicketTableRow = {
   projectTitle: string;
   createdAt: Date;
   canEdit: boolean;
+  canDelete: boolean;
 };
 
 export function TicketsTable({

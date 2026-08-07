@@ -6,16 +6,17 @@ import { and, asc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { projects, ticketAttachments, ticketComments, tickets, ticketStatusHistory, userProjects, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { canEditTicket, canViewTicket } from "@/lib/permissions";
+import { canDeleteTicket, canEditTicket, canViewTicket } from "@/lib/permissions";
 import {
   commentSchema,
   createTicketSchema,
   deleteCommentSchema,
+  deleteTicketSchema,
   updateCommentSchema,
   updateTicketInlineSchema,
   updateTicketSchema,
 } from "@/lib/validation";
-import { getAttachmentDownloadUrl, uploadTicketAttachment } from "@/lib/storage";
+import { deleteTicketAttachments, getAttachmentDownloadUrl, uploadTicketAttachment } from "@/lib/storage";
 
 type CurrentUser = Awaited<ReturnType<typeof requireUser>>;
 type UserWithRole = {
@@ -377,6 +378,45 @@ export async function updateTicketInlineAction(formData: FormData) {
   const [project] = await db.select({ name: projects.name }).from(projects).where(eq(projects.id, ticket.projectId)).limit(1);
   if (project) revalidatePath(`/tickets/${project.name}`);
   revalidatePath(`/tickets/detail/${parsed.ticketId}`);
+}
+
+export async function deleteTicketAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = deleteTicketSchema.parse({
+    ticketId: formData.get("ticketId"),
+  });
+
+  const [ticket] = await db.select().from(tickets).where(eq(tickets.id, parsed.ticketId)).limit(1);
+  if (!ticket || !canDeleteTicket(user, ticket)) {
+    throw new Error("You do not have permission to delete this ticket.");
+  }
+
+  await requireProjectAccess(user, ticket.projectId, "You do not have access to delete this project ticket.");
+
+  const attachments = await db
+    .select({ objectKey: ticketAttachments.objectKey })
+    .from(ticketAttachments)
+    .where(eq(ticketAttachments.ticketId, ticket.id));
+
+  // Comments, attachments, and status history cascade on ticket deletion.
+  await db.delete(tickets).where(eq(tickets.id, ticket.id));
+
+  if (attachments.length > 0) {
+    try {
+      await deleteTicketAttachments(attachments.map((attachment) => attachment.objectKey));
+    } catch (cleanupError) {
+      // The database rows are the source of truth; S3 cleanup is best-effort.
+      console.error("Failed to clean up S3 attachments for ticket", ticket.id, cleanupError);
+    }
+  }
+
+  await revalidateTicketPaths({
+    ticketId: ticket.id,
+    projectId: ticket.projectId,
+    includeDetail: true,
+  });
+
+  return { ticketId: ticket.id };
 }
 
 export async function addCommentAction(formData: FormData) {

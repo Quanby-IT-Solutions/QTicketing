@@ -10,7 +10,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TicketsTable } from "@/components/tickets-table";
 import { requireUser } from "@/lib/auth";
-import { canEditTicket } from "@/lib/permissions";
+import { canDeleteTicket, canEditTicket } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
 function RestrictedProjectAccess({
@@ -102,6 +102,7 @@ export default async function ProjectTicketsPage({ params }: { params: Promise<{
   const rows = ticketRows.map((ticket) => ({
     ...ticket,
     canEdit: canEditTicket(user, ticket),
+    canDelete: canDeleteTicket(user, ticket),
   }));
 
   return (

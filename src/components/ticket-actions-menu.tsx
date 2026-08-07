@@ -1,19 +1,34 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
   EllipsisVerticalIcon,
   EyeIcon,
+  LoaderCircle,
   MessageSquarePlusIcon,
   PencilIcon,
+  Trash2Icon,
 } from "lucide-react";
+import { deleteTicketAction } from "@/app/actions/tickets";
 import {
   EditTicketDialog,
   type EditableTicket,
 } from "@/components/edit-ticket-dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogMedia,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import { TicketCommentDialog } from "@/components/ticket-comment-dialog";
 import { TicketDetailsDialog } from "@/components/ticket-details-dialog";
-import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,6 +38,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { toast } from "@/components/ui/toast";
 import type { TicketPriority, TicketStatus } from "@/db/schema";
 
 export type TicketActionsMenuTicket = {
@@ -37,13 +53,48 @@ export type TicketActionsMenuTicket = {
   location: string | null;
   dueDate: Date | string | null;
   canEdit: boolean;
+  canDelete: boolean;
 };
 
 export function TicketActionsMenu({ ticket }: { ticket: TicketActionsMenuTicket }) {
+  const router = useRouter();
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
   const [commentOpen, setCommentOpen] = React.useState(false);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
+  const [isPending, startTransition] = React.useTransition();
   const canMutate = ticket.canEdit;
+
+  function handleDelete() {
+    if (isPending) return;
+
+    const formData = new FormData();
+    formData.set("ticketId", ticket.id);
+
+    startTransition(async () => {
+      try {
+        await deleteTicketAction(formData);
+        setDeleteOpen(false);
+        router.refresh();
+        toast.add({
+          title: "Ticket deleted",
+          description: `Ticket #${ticket.ticketNumber} was permanently deleted.`,
+          type: "success",
+        });
+      } catch (submitError) {
+        const message =
+          submitError instanceof Error && submitError.message
+            ? submitError.message
+            : "The ticket could not be deleted. Please try again.";
+        toast.add({
+          title: "Ticket not deleted",
+          description: message,
+          type: "error",
+          priority: "high",
+        });
+      }
+    });
+  }
   const editableTicket: EditableTicket | null =
     canMutate
       ? {
@@ -99,6 +150,18 @@ export function TicketActionsMenu({ ticket }: { ticket: TicketActionsMenuTicket 
                   Add comment
                 </DropdownMenuItem>
               </DropdownMenuGroup>
+
+              {ticket.canDelete ? (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuGroup>
+                    <DropdownMenuItem onClick={() => setDeleteOpen(true)} variant="destructive">
+                      <Trash2Icon aria-hidden="true" />
+                      Delete ticket
+                    </DropdownMenuItem>
+                  </DropdownMenuGroup>
+                </>
+              ) : null}
             </>
           ) : null}
         </DropdownMenuContent>
@@ -136,6 +199,40 @@ export function TicketActionsMenu({ ticket }: { ticket: TicketActionsMenuTicket 
             title: ticket.title,
           }}
         />
+      ) : null}
+
+      {ticket.canDelete ? (
+        <AlertDialog onOpenChange={setDeleteOpen} open={deleteOpen}>
+          <AlertDialogContent size="sm">
+            <AlertDialogHeader>
+              <AlertDialogMedia className="bg-destructive/10 text-destructive">
+                <Trash2Icon aria-hidden="true" />
+              </AlertDialogMedia>
+              <AlertDialogTitle>
+                Delete ticket #{ticket.ticketNumber}?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                This permanently deletes the ticket, its comments, attachments,
+                and history. This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={isPending}
+                onClick={handleDelete}
+                variant="destructive"
+              >
+                {isPending ? (
+                  <LoaderCircle aria-hidden="true" className="animate-spin" />
+                ) : (
+                  <Trash2Icon aria-hidden="true" />
+                )}
+                {isPending ? "Deleting..." : "Delete ticket"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       ) : null}
     </>
   );

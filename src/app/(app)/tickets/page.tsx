@@ -5,7 +5,7 @@ import { CreateTicketButton } from "@/components/create-ticket-dialog";
 import { TicketsTable } from "@/components/tickets-table";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/lib/auth";
-import { canEditTicket } from "@/lib/permissions";
+import { canDeleteTicket, canEditTicket } from "@/lib/permissions";
 
 export default async function TicketsPage() {
   const user = await requireUser();
@@ -52,6 +52,7 @@ export default async function TicketsPage() {
   const rows = ticketRows.map((ticket) => ({
     ...ticket,
     canEdit: canEditTicket(user, ticket),
+    canDelete: canDeleteTicket(user, ticket),
   }));
 
   return (

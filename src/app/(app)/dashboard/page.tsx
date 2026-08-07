@@ -17,7 +17,7 @@ import {
 import { db } from "@/db";
 import { projects, tickets, userProjects, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { canEditTicket } from "@/lib/permissions";
+import { canDeleteTicket, canEditTicket } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 
 const emptyId = "00000000-0000-0000-0000-000000000000";
@@ -181,6 +181,7 @@ export default async function DashboardPage() {
     projectTitle: ticket.projectTitle,
     createdAt: ticket.createdAt,
     canEdit: canEditTicket(user, ticket),
+    canDelete: canDeleteTicket(user, ticket),
   }));
 
   return (

@@ -84,6 +84,10 @@ export const deleteCommentSchema = z.object({
   commentId: z.string().uuid(),
 });
 
+export const deleteTicketSchema = z.object({
+  ticketId: z.string().uuid(),
+});
+
 export type CreateTicketInput = z.infer<typeof createTicketSchema>;
 export type UpdateTicketInput = z.infer<typeof updateTicketSchema>;
 export type UpdateTicketInlineInput = z.infer<typeof updateTicketInlineSchema>;
