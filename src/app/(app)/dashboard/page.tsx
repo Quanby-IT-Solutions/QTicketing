@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { and, asc, desc, eq, inArray } from "drizzle-orm";
 import { ArrowRightIcon } from "lucide-react";
@@ -53,6 +54,10 @@ function buildTrendData(
 
   return points;
 }
+
+export const metadata: Metadata = {
+  title: "Dashboard",
+};
 
 export default async function DashboardPage() {
   const user = await requireUser();

@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { desc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { projects, tickets, userProjects, users } from "@/db/schema";
@@ -6,6 +7,10 @@ import { TicketsTable } from "@/components/tickets-table";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/lib/auth";
 import { canDeleteTicket, canEditTicket } from "@/lib/permissions";
+
+export const metadata: Metadata = {
+  title: "Tickets",
+};
 
 export default async function TicketsPage() {
   const user = await requireUser();

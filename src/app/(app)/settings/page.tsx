@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { asc, desc, eq } from "drizzle-orm";
 import {
   AtSign,
@@ -81,6 +82,10 @@ function RequestStatusBadge({ status }: { status: ProjectAccessRequestStatus }) 
     </Badge>
   );
 }
+
+export const metadata: Metadata = {
+  title: "Settings",
+};
 
 export default async function SettingsPage() {
   const user = await requireUser();

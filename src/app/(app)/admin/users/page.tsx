@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { asc, desc, eq } from "drizzle-orm";
 import { Check, CheckCircle2, Clock3, FolderPlus, ShieldCheck, ShieldPlus, UsersRound, X } from "lucide-react";
@@ -33,6 +34,10 @@ const statusClass = {
   pending: "border-amber-200 bg-amber-50 text-amber-700",
   approved: "border-emerald-200 bg-emerald-50 text-emerald-700",
   rejected: "border-rose-200 bg-rose-50 text-rose-700",
+};
+
+export const metadata: Metadata = {
+  title: "Users",
 };
 
 export default async function UsersPage() {

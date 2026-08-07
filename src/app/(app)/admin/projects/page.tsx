@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { asc } from "drizzle-orm";
 import { FolderKanban, Plus, Shapes } from "lucide-react";
@@ -9,9 +10,14 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ProjectActions } from "@/components/project-actions";
 import { db } from "@/db";
 import { projects } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+
+export const metadata: Metadata = {
+  title: "Projects",
+};
 
 export default async function ProjectsPage() {
   const currentUser = await requireUser();
@@ -80,7 +86,8 @@ export default async function ProjectsPage() {
                   <TableHead scope="col">Project</TableHead>
                   <TableHead scope="col">Code</TableHead>
                   <TableHead scope="col">Created</TableHead>
-                  <TableHead className="text-right" scope="col">Status</TableHead>
+                  <TableHead scope="col">Status</TableHead>
+                  <TableHead className="text-right" scope="col">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -98,7 +105,7 @@ export default async function ProjectsPage() {
                       <span className="rounded-md bg-muted px-2 py-1 font-mono text-xs font-medium">{project.name}</span>
                     </TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">{project.createdAt.toLocaleDateString()}</TableCell>
-                    <TableCell className="text-right">
+                    <TableCell>
                       <Badge
                         className={project.active
                           ? "border-emerald-200 bg-emerald-50 text-emerald-700"
@@ -107,6 +114,16 @@ export default async function ProjectsPage() {
                       >
                         {project.active ? "Active" : "Inactive"}
                       </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <ProjectActions
+                        project={{
+                          id: project.id,
+                          name: project.name,
+                          title: project.title,
+                          active: project.active,
+                        }}
+                      />
                     </TableCell>
                   </TableRow>
                 ))}

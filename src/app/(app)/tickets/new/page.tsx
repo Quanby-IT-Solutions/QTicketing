@@ -1,8 +1,13 @@
+import type { Metadata } from "next";
 import { asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { projects, userProjects } from "@/db/schema";
 import { TicketForm } from "@/components/ticket-form";
 import { requireUser } from "@/lib/auth";
+
+export const metadata: Metadata = {
+  title: "New Ticket",
+};
 
 export default async function NewTicketPage() {
   const user = await requireUser();

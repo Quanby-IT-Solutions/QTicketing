@@ -61,6 +61,20 @@ export const createProjectSchema = z.object({
   title: z.string().trim().min(2).max(120),
 });
 
+export const updateProjectSchema = z.object({
+  projectId: z.string().uuid(),
+  name: createProjectSchema.shape.name,
+  title: createProjectSchema.shape.title,
+});
+
+export const toggleProjectActiveSchema = z.object({
+  projectId: z.string().uuid(),
+});
+
+export const deleteProjectSchema = z.object({
+  projectId: z.string().uuid(),
+});
+
 export const updateTicketInlineSchema = z.object({
   ticketId: z.string().uuid(),
   status: ticketStatusSchema.optional(),

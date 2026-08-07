@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { cookies } from "next/headers";
 import { ShieldCheck } from "lucide-react";
@@ -9,6 +10,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { LoginForm } from "@/components/login-form";
+
+export const metadata: Metadata = {
+  title: "Sign In",
+};
 
 function decodeRememberedEmail(value: string | undefined) {
   if (!value) return "";

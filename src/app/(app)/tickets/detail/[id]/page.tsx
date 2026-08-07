@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { asc, eq } from "drizzle-orm";
@@ -41,6 +42,12 @@ function DetailItem({ icon: Icon, label, children }: { icon: typeof Tag; label: 
       </div>
     </div>
   );
+}
+
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
+  const { id } = await params;
+  const [ticket] = await db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
+  return { title: ticket ? `TKT-${ticket.ticketNumber} — ${ticket.title}` : "Ticket" };
 }
 
 export default async function TicketDetailPage({ params }: { params: Promise<{ id: string }> }) {

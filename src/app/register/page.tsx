@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { asc, eq } from "drizzle-orm";
 import { ArrowLeft, FolderKanban, Send, TicketCheck } from "lucide-react";
@@ -10,6 +11,10 @@ import { Label } from "@/components/ui/label";
 import { db } from "@/db";
 import { projects } from "@/db/schema";
 import { cn } from "@/lib/utils";
+
+export const metadata: Metadata = {
+  title: "Register",
+};
 
 export default async function RegisterPage() {
   const projectRows = await db.select().from(projects).where(eq(projects.active, true)).orderBy(asc(projects.title));

@@ -12,7 +12,7 @@ const geist = Geist({ subsets: ["latin"], variable: "--font-geist-sans" });
 export const metadata: Metadata = {
   title: {
     default: "Ticketing Portal",
-    template: "%s | Ticketing Portal",
+    template: "%s ",
   },
   description: "Internal project support and ticket management workspace.",
   icons: {
@@ -22,7 +22,9 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+export default function RootLayout({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={cn("font-sans", geist.variable)}>
       <body>
