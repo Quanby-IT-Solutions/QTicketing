@@ -72,7 +72,6 @@ export function TicketForm({
             <Textarea
               className="min-h-40 resize-y"
               id="description"
-              minLength={10}
               name="description"
               placeholder="What happened, what did you expect, and how does it affect your work?"
               required

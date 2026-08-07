@@ -16,10 +16,9 @@ import {
 } from "lucide-react";
 import { EditTicketDialog } from "@/components/edit-ticket-dialog";
 import { TicketPriorityBadge, TicketStatusBadge } from "@/components/ticket-badge";
-import { TicketCommentDialog } from "@/components/ticket-comment-dialog";
 import { TicketConversation } from "@/components/ticket-conversation";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { db } from "@/db";
 import { projects, ticketAttachments, ticketComments, ticketStatusHistory, tickets, userProjects, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
@@ -217,15 +216,6 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
                 <span className="ml-1 text-xs font-normal text-muted-foreground">({comments.length})</span>
               </CardTitle>
               <CardDescription>Keep updates and decisions together with the ticket.</CardDescription>
-              <CardAction>
-                <TicketCommentDialog
-                  ticket={{
-                    id: ticket.id,
-                    ticketNumber: ticket.ticketNumber,
-                    title: ticket.title,
-                  }}
-                />
-              </CardAction>
             </CardHeader>
             <CardContent>
               <TicketConversation

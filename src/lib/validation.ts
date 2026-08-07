@@ -5,7 +5,7 @@ export const ticketPrioritySchema = z.enum(["low", "normal", "high"]);
 
 export const createTicketSchema = z.object({
   title: z.string().trim().min(3).max(160),
-  description: z.string().trim().min(10).max(5000),
+  description: z.string().trim().max(5000),
   priority: ticketPrioritySchema.default("normal"),
   projectId: z.string().uuid(),
   category: z.string().trim().min(2).max(80),
@@ -82,6 +82,12 @@ export const updateCommentSchema = z.object({
 export const deleteCommentSchema = z.object({
   ticketId: z.string().uuid(),
   commentId: z.string().uuid(),
+});
+
+export const deleteCommentAttachmentSchema = z.object({
+  ticketId: z.string().uuid(),
+  commentId: z.string().uuid(),
+  attachmentId: z.string().uuid(),
 });
 
 export const deleteTicketSchema = z.object({

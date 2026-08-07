@@ -2,11 +2,13 @@ import { describe, expect, it } from "vitest";
 import {
   commentSchema,
   createTicketSchema,
+  deleteCommentAttachmentSchema,
   deleteTicketSchema,
   requestProjectAccessSchema,
   reviewProjectAccessSchema,
   ticketPrioritySchema,
   ticketStatusSchema,
+  updateCommentSchema,
   updateTicketSchema,
 } from "@/lib/validation";
 
@@ -88,6 +90,23 @@ describe("comment validation", () => {
   it("rejects invalid parent IDs and empty comment bodies", () => {
     expect(commentSchema.safeParse({ ticketId, parentCommentId: "not-a-uuid", body: "Reply" }).success).toBe(false);
     expect(commentSchema.safeParse({ ticketId, body: "   " }).success).toBe(false);
+  });
+
+  it("accepts comment edits", () => {
+    expect(
+      updateCommentSchema.safeParse({ ticketId, commentId: parentCommentId, body: "Updated text" }).success,
+    ).toBe(true);
+  });
+
+  it("accepts attachment deletion for a comment and rejects bad ids", () => {
+    const valid = {
+      ticketId,
+      commentId: parentCommentId,
+      attachmentId: "550e8400-e29b-41d4-a716-446655440000",
+    };
+
+    expect(deleteCommentAttachmentSchema.safeParse(valid).success).toBe(true);
+    expect(deleteCommentAttachmentSchema.safeParse({ ...valid, attachmentId: "not-a-uuid" }).success).toBe(false);
   });
 });
 

@@ -10,6 +10,7 @@ import { canDeleteTicket, canEditTicket, canViewTicket } from "@/lib/permissions
 import {
   commentSchema,
   createTicketSchema,
+  deleteCommentAttachmentSchema,
   deleteCommentSchema,
   deleteTicketSchema,
   updateCommentSchema,
@@ -581,11 +582,96 @@ export async function updateCommentAction(formData: FormData) {
     user,
   });
 
-  await db
-    .update(ticketComments)
-    .set({ body: parsed.body })
-    .where(eq(ticketComments.id, parsed.commentId));
+  const attachmentFiles = getAttachmentFiles(formData);
+  for (const file of attachmentFiles) {
+    if (file.size > maxAttachmentBytes) {
+      throw new Error(attachmentSizeErrorMessage);
+    }
+  }
+
+  // Upload to S3 before touching the database so a failed upload never leaves
+  // the comment in a half-updated state.
+  const uploadedAttachments: Awaited<ReturnType<typeof uploadTicketAttachment>>[] = [];
+  try {
+    for (const file of attachmentFiles) {
+      uploadedAttachments.push(await uploadTicketAttachment(parsed.ticketId, file));
+    }
+  } catch (uploadError) {
+    if (uploadedAttachments.length > 0) {
+      await deleteTicketAttachments(uploadedAttachments.map((uploaded) => uploaded.objectKey)).catch(() => {});
+    }
+    throw uploadError;
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(ticketComments)
+        .set({ body: parsed.body })
+        .where(eq(ticketComments.id, parsed.commentId));
+
+      for (const uploaded of uploadedAttachments) {
+        await tx.insert(ticketAttachments).values({
+          ticketId: parsed.ticketId,
+          commentId: parsed.commentId,
+          uploaderId: user.id,
+          ...uploaded,
+        });
+      }
+
+      await tx.update(tickets).set({ updatedAt: new Date() }).where(eq(tickets.id, parsed.ticketId));
+    });
+  } catch (dbError) {
+    if (uploadedAttachments.length > 0) {
+      await deleteTicketAttachments(uploadedAttachments.map((uploaded) => uploaded.objectKey)).catch(() => {});
+    }
+    throw dbError;
+  }
+
+  await revalidateTicketPaths({
+    ticketId: parsed.ticketId,
+    projectId: comment.projectId,
+    includeDetail: true,
+  });
+}
+
+export async function deleteCommentAttachmentAction(formData: FormData) {
+  const user = await requireUser();
+  const parsed = deleteCommentAttachmentSchema.parse({
+    ticketId: formData.get("ticketId"),
+    commentId: formData.get("commentId"),
+    attachmentId: formData.get("attachmentId"),
+  });
+  const comment = await getManageableComment({
+    commentId: parsed.commentId,
+    ticketId: parsed.ticketId,
+    user,
+  });
+
+  const [attachment] = await db
+    .select({ objectKey: ticketAttachments.objectKey })
+    .from(ticketAttachments)
+    .where(
+      and(
+        eq(ticketAttachments.id, parsed.attachmentId),
+        eq(ticketAttachments.commentId, parsed.commentId),
+      ),
+    )
+    .limit(1);
+
+  if (!attachment) {
+    throw new Error("Attachment not found on this comment.");
+  }
+
+  await db.delete(ticketAttachments).where(eq(ticketAttachments.id, parsed.attachmentId));
   await db.update(tickets).set({ updatedAt: new Date() }).where(eq(tickets.id, parsed.ticketId));
+
+  // The database rows are the source of truth; S3 cleanup is best-effort.
+  try {
+    await deleteTicketAttachments([attachment.objectKey]);
+  } catch (cleanupError) {
+    console.error("Failed to clean up S3 attachment", parsed.attachmentId, cleanupError);
+  }
 
   await revalidateTicketPaths({
     ticketId: parsed.ticketId,
