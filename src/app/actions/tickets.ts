@@ -17,6 +17,7 @@ import {
   updateTicketSchema,
 } from "@/lib/validation";
 import { collectCommentSubtree } from "@/lib/comment-tree";
+import { createTicket } from "@/lib/services/ticket-creation";
 import { attachmentSizeErrorMessage, deleteTicketAttachments, getAttachmentDownloadUrl, maxAttachmentBytes, uploadTicketAttachment } from "@/lib/storage";
 
 type CurrentUser = Awaited<ReturnType<typeof requireUser>>;
@@ -136,34 +137,8 @@ async function createTicketFromFormData(formData: FormData) {
 
   await requireProjectAccess(user, parsed.projectId, "You do not have access to create tickets for this project.");
 
-  const [ticket] = await db
-    .insert(tickets)
-    .values({
-      title: parsed.title,
-      description: parsed.description,
-      priority: parsed.priority,
-      projectId: parsed.projectId,
-      category: parsed.category,
-      department: parsed.department || null,
-      location: parsed.location || null,
-      dueDate: parsed.dueDate ? new Date(parsed.dueDate) : null,
-      requesterId: user.id,
-    })
-    .returning({
-      id: tickets.id,
-      ticketNumber: tickets.ticketNumber,
-      projectId: tickets.projectId,
-    });
-
-  if (!ticket) throw new Error("Ticket could not be created.");
-
+  const ticket = await createTicket({ ...parsed, requesterId: user.id });
   await addAttachments(ticket.id, user.id, formData);
-  await db.insert(ticketStatusHistory).values({
-    ticketId: ticket.id,
-    changedById: user.id,
-    fromStatus: null,
-    toStatus: "pending",
-  });
 
   await revalidateTicketPaths({ ticketId: ticket.id, projectId: ticket.projectId });
 

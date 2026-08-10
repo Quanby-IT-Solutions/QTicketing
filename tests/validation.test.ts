@@ -5,6 +5,7 @@ import {
   deleteCommentAttachmentSchema,
   deleteTicketSchema,
   requestProjectAccessSchema,
+  rmisProvisionUserSchema,
   reviewProjectAccessSchema,
   ticketPrioritySchema,
   ticketStatusSchema,
@@ -127,5 +128,36 @@ describe("project access request validation", () => {
   it("rejects unsupported decisions and invalid request IDs", () => {
     expect(reviewProjectAccessSchema.safeParse({ requestId, decision: "pending" }).success).toBe(false);
     expect(reviewProjectAccessSchema.safeParse({ requestId: "not-a-uuid", decision: "approve" }).success).toBe(false);
+  });
+});
+
+describe("RMIS user provisioning validation", () => {
+  it("accepts a valid user without client-controlled access fields", () => {
+    const result = rmisProvisionUserSchema.safeParse({
+      name: "Juan Dela Cruz",
+      email: "juan@example.com",
+      password: "a-secure-password",
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects invalid credentials and strips access escalation fields", () => {
+    expect(
+      rmisProvisionUserSchema.safeParse({ name: "J", email: "not-email", password: "short" }).success,
+    ).toBe(false);
+
+    const parsed = rmisProvisionUserSchema.parse({
+      name: "Juan Dela Cruz",
+      email: "juan@example.com",
+      password: "a-secure-password",
+      role: "admin",
+      status: "approved",
+      projectCode: "DMS",
+    });
+
+    expect(parsed).not.toHaveProperty("role");
+    expect(parsed).not.toHaveProperty("status");
+    expect(parsed).not.toHaveProperty("projectCode");
   });
 });

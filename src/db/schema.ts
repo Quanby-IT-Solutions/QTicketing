@@ -85,6 +85,25 @@ export const sessions = pgTable("sessions", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    userId: uuid("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    name: varchar("name", { length: 80 }).notNull(),
+    prefix: varchar("prefix", { length: 24 }).notNull(),
+    tokenHash: text("token_hash").notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    expiresAt: timestamp("expires_at", { withTimezone: true }),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    tokenHashUniqueIdx: uniqueIndex("api_keys_token_hash_unique").on(table.tokenHash),
+    userIdx: index("api_keys_user_idx").on(table.userId),
+  }),
+);
+
 export const tickets = pgTable(
   "tickets",
   {
@@ -183,8 +202,13 @@ export const userRelations = relations(users, ({ many }) => ({
   requestedTickets: many(tickets, { relationName: "requester" }),
   assignedTickets: many(tickets, { relationName: "assignee" }),
   userProjects: many(userProjects),
+  apiKeys: many(apiKeys),
   projectAccessRequests: many(projectAccessRequests, { relationName: "accessRequestUser" }),
   projectAccessReviews: many(projectAccessRequests, { relationName: "accessRequestReviewer" }),
+}));
+
+export const apiKeyRelations = relations(apiKeys, ({ one }) => ({
+  user: one(users, { fields: [apiKeys.userId], references: [users.id] }),
 }));
 
 export const projectRelations = relations(projects, ({ many }) => ({
@@ -220,5 +244,7 @@ export type TicketPriority = (typeof ticketPriorityEnum.enumValues)[number];
 export type UserRole = (typeof userRoleEnum.enumValues)[number];
 export type UserStatus = (typeof userStatusEnum.enumValues)[number];
 export type ProjectAccessRequestStatus = (typeof projectAccessRequestStatusEnum.enumValues)[number];
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type NewApiKey = typeof apiKeys.$inferInsert;
 
 export const nowSql = sql`now()`;

@@ -1,5 +1,10 @@
 import { z } from "zod";
 
+const optionalProvisioningToken = z.preprocess(
+  (value) => (value === "" ? undefined : value),
+  z.string().min(32).optional(),
+);
+
 const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   AWS_ACCESS_KEY_ID: z.string().min(1),
@@ -7,6 +12,8 @@ const envSchema = z.object({
   AWS_REGION: z.string().min(1),
   S3_BUCKET_NAME: z.string().min(1),
   SESSION_SECRET: z.string().min(24).optional(),
+  RMIS_PROVISIONING_TOKEN: optionalProvisioningToken,
+  RMIS_TICKET_API_KEY: optionalProvisioningToken,
 });
 
 export const env = envSchema.parse({
@@ -16,4 +23,6 @@ export const env = envSchema.parse({
   AWS_REGION: process.env.AWS_REGION ?? "ap-southeast-1",
   S3_BUCKET_NAME: process.env.S3_BUCKET_NAME ?? "missing-ticketing-bucket",
   SESSION_SECRET: process.env.SESSION_SECRET,
+  RMIS_PROVISIONING_TOKEN: process.env.RMIS_PROVISIONING_TOKEN,
+  RMIS_TICKET_API_KEY: process.env.RMIS_TICKET_API_KEY,
 });

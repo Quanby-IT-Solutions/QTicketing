@@ -34,6 +34,12 @@ export const registerSchema = z.object({
   projectIds: z.array(z.string().uuid()).min(1, "Select at least one project."),
 });
 
+export const rmisProvisionUserSchema = registerSchema.pick({
+  name: true,
+  email: true,
+  password: true,
+});
+
 export const updateUserAccessSchema = z.object({
   userId: z.string().uuid(),
   role: z.enum(["admin", "agent", "requester"]),

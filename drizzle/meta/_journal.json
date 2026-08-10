@@ -36,6 +36,13 @@
       "when": 1786067215906,
       "tag": "0004_marvelous_thunderbolt",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1786338329733,
+      "tag": "0005_foamy_rick_jones",
+      "breakpoints": true
     }
   ]
 }

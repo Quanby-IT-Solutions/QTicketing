@@ -14,6 +14,10 @@ import {
   XCircle,
 } from "lucide-react";
 import { ProjectAccessRequestForm } from "@/components/project-access-request-form";
+import {
+  ApiKeyManager,
+  type ApiKeyListItem,
+} from "@/components/api-key-manager";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -39,6 +43,7 @@ import {
   type ProjectAccessRequestStatus,
 } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import { listApiKeys } from "@/lib/api-keys";
 import { cn } from "@/lib/utils";
 
 function initials(name: string) {
@@ -90,38 +95,40 @@ export const metadata: Metadata = {
 export default async function SettingsPage() {
   const user = await requireUser();
 
-  const [activeProjects, assignedProjects, requestRows] = await Promise.all([
-    db
-      .select()
-      .from(projects)
-      .where(eq(projects.active, true))
-      .orderBy(asc(projects.title)),
-    db
-      .select({
-        id: projects.id,
-        name: projects.name,
-        title: projects.title,
-        active: projects.active,
-      })
-      .from(userProjects)
-      .innerJoin(projects, eq(userProjects.projectId, projects.id))
-      .where(eq(userProjects.userId, user.id))
-      .orderBy(asc(projects.title)),
-    db
-      .select({
-        id: projectAccessRequests.id,
-        projectId: projectAccessRequests.projectId,
-        projectName: projects.name,
-        projectTitle: projects.title,
-        status: projectAccessRequests.status,
-        requestedAt: projectAccessRequests.requestedAt,
-        reviewedAt: projectAccessRequests.reviewedAt,
-      })
-      .from(projectAccessRequests)
-      .innerJoin(projects, eq(projectAccessRequests.projectId, projects.id))
-      .where(eq(projectAccessRequests.userId, user.id))
-      .orderBy(desc(projectAccessRequests.requestedAt)),
-  ]);
+  const [activeProjects, assignedProjects, requestRows, apiKeyRows] =
+    await Promise.all([
+      db
+        .select()
+        .from(projects)
+        .where(eq(projects.active, true))
+        .orderBy(asc(projects.title)),
+      db
+        .select({
+          id: projects.id,
+          name: projects.name,
+          title: projects.title,
+          active: projects.active,
+        })
+        .from(userProjects)
+        .innerJoin(projects, eq(userProjects.projectId, projects.id))
+        .where(eq(userProjects.userId, user.id))
+        .orderBy(asc(projects.title)),
+      db
+        .select({
+          id: projectAccessRequests.id,
+          projectId: projectAccessRequests.projectId,
+          projectName: projects.name,
+          projectTitle: projects.title,
+          status: projectAccessRequests.status,
+          requestedAt: projectAccessRequests.requestedAt,
+          reviewedAt: projectAccessRequests.reviewedAt,
+        })
+        .from(projectAccessRequests)
+        .innerJoin(projects, eq(projectAccessRequests.projectId, projects.id))
+        .where(eq(projectAccessRequests.userId, user.id))
+        .orderBy(desc(projectAccessRequests.requestedAt)),
+      listApiKeys(user.id),
+    ]);
 
   const currentProjects = user.role === "admin" ? activeProjects : assignedProjects;
   const assignedProjectIds = new Set(
@@ -133,6 +140,21 @@ export default async function SettingsPage() {
   const pendingRequestCount = requestRows.filter(
     (request) => request.status === "pending",
   ).length;
+  const now = new Date();
+  const apiKeyItems: ApiKeyListItem[] = apiKeyRows.map((apiKey) => ({
+    id: apiKey.id,
+    name: apiKey.name,
+    prefix: apiKey.prefix,
+    createdAt: apiKey.createdAt.toISOString(),
+    lastUsedAt: apiKey.lastUsedAt?.toISOString() ?? null,
+    expiresAt: apiKey.expiresAt?.toISOString() ?? null,
+    revokedAt: apiKey.revokedAt?.toISOString() ?? null,
+    status: apiKey.revokedAt
+      ? "revoked"
+      : apiKey.expiresAt && apiKey.expiresAt <= now
+        ? "expired"
+        : "active",
+  }));
   return (
     <div className="mx-auto w-full max-w-6xl space-y-6">
       <div>
@@ -141,7 +163,7 @@ export default async function SettingsPage() {
           Settings
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Review your ticketing profile and manage project access requests.
+          Review your profile, API credentials, and project access requests.
         </p>
       </div>
 
@@ -195,6 +217,8 @@ export default async function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <ApiKeyManager apiKeys={apiKeyItems} />
 
       <Card>
         <CardHeader className="border-b">
