@@ -1,6 +1,6 @@
 # Ticketing API v1
 
-For the full RMIS registration and automatic ticket-creation implementation, see [Project-to-Ticketing integration](./project-ticketing-integration.md).
+For project registration synchronization and automatic ticket creation, see [Project-to-Ticketing integration](./project-ticketing-integration.md).
 
 The Ticketing API supports server-to-server ticket creation using user-owned API keys. Keep API keys in the calling project's backend or secret manager; never embed them in browser or mobile application code.
 
@@ -68,17 +68,46 @@ curl --request POST \
 
 The JSON endpoint does not accept attachments. Add files through Ticketing after creation until a multipart attachment endpoint is introduced.
 
-## RMIS automatic ticket creation
+## Read, update, and delete tickets
 
-For the RMIS application, a user does not need to generate or manage a personal API key. RMIS stores one backend-only integration key and uses this endpoint after it identifies its signed-in user:
+All ticket operations use the same user API key and require the key owner to have current access to `{projectCode}`.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/v1/projects/{projectCode}/tickets?limit=50` | List up to 100 project tickets, newest update first |
+| `GET` | `/api/v1/projects/{projectCode}/tickets/{ticketId}` | Get one ticket |
+| `PATCH` | `/api/v1/projects/{projectCode}/tickets/{ticketId}` | Update editable ticket fields |
+| `DELETE` | `/api/v1/projects/{projectCode}/tickets/{ticketId}` | Delete a ticket; returns `204` |
+
+Example update:
 
 ```http
-POST /api/v1/integrations/rmis/tickets
-Authorization: Bearer <RMIS integration key>
+PATCH /api/v1/projects/QLEGAL/tickets/9a73e5fa-0ee0-4db1-a449-4608f1240c9c
+Authorization: Bearer qtk_live_<user-api-key>
 Content-Type: application/json
 ```
 
-The body is the same as the project ticket body, plus the authenticated RMIS user's email. RMIS must derive that email from its server-side session, never trust an email supplied directly by the browser:
+```json
+{
+  "status": "ongoing",
+  "priority": "high",
+  "dueDate": "2026-08-20"
+}
+```
+
+`PATCH` accepts any combination of `title`, `description`, `status` (`pending`, `ongoing`, `done`), `priority`, `category`, `department`, `location`, and `dueDate`. Ticket status changes are recorded in the status history. It does not accept a different requester, project, or assignee.
+
+## Automatic ticket creation from any project
+
+An integrated project does not need each user to generate a personal key. The project backend stores the integration key and uses its project code after it identifies the signed-in user:
+
+```http
+POST /api/v1/integrations/{projectCode}/tickets
+Authorization: Bearer <TICKETING_TICKET_API_KEY>
+Content-Type: application/json
+```
+
+The body is the same as the project ticket body, plus the authenticated user's email. The project backend must derive that email from its server-side session, never trust an email supplied directly by the browser:
 
 ```json
 {
@@ -94,4 +123,4 @@ Ticketing resolves that email to its own account and only creates the ticket whe
 
 ## Account provisioning credential
 
-`RMIS_PROVISIONING_TOKEN` is a separate server-to-server credential used only by the RMIS account synchronization endpoint. It cannot authenticate ticket API requests and must not be issued to users.
+`TICKETING_PROVISIONING_TOKEN` is a separate server-to-server credential used only by account synchronization endpoints. It cannot authenticate ticket API requests and must not be issued to users.

@@ -32,3 +32,17 @@ export const createRmisIntegrationTicketSchema = createApiTicketSchema
     requesterEmail: z.string().trim().email().max(255),
   })
   .strict();
+
+export const updateApiTicketSchema = z
+  .object({
+    title: createTicketSchema.shape.title.optional(),
+    description: createTicketSchema.shape.description.optional(),
+    status: z.enum(["pending", "ongoing", "done"]).optional(),
+    priority: createTicketSchema.shape.priority.optional(),
+    category: createTicketSchema.shape.category.optional(),
+    department: createTicketSchema.shape.department.optional(),
+    location: createTicketSchema.shape.location.optional(),
+    dueDate: apiDueDateSchema.optional(),
+  })
+  .strict()
+  .refine((value) => Object.keys(value).length > 0, "Send at least one editable ticket field.");

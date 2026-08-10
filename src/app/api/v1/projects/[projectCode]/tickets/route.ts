@@ -1,8 +1,8 @@
-import { and, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { projects, userProjects } from "@/db/schema";
+import { projects, tickets, userProjects } from "@/db/schema";
 import { authenticateApiRequest } from "@/lib/api-auth";
 import { createApiTicketSchema } from "@/lib/api-ticket-validation";
 import { createTicket } from "@/lib/services/ticket-creation";
@@ -166,4 +166,38 @@ export async function POST(request: Request, context: RouteContext) {
       500,
     );
   }
+}
+
+export async function GET(request: Request, { params }: RouteContext) {
+  const user = await authenticateApiRequest(request);
+  if (!user) {
+    return response({ error: { code: "UNAUTHORIZED", message: "A valid Bearer API key is required." } }, 401, { "WWW-Authenticate": "Bearer" });
+  }
+
+  const { projectCode } = await params;
+  const code = projectCode.trim().toUpperCase();
+  const [project] = await db
+    .select({ id: projects.id, name: projects.name, title: projects.title })
+    .from(projects)
+    .where(and(eq(projects.name, code), eq(projects.active, true)))
+    .limit(1);
+  if (!project) return response({ error: { code: "PROJECT_NOT_FOUND", message: "The requested active project was not found." } }, 404);
+  if (user.role !== "admin" && !user.projectIds.includes(project.id)) {
+    return response({ error: { code: "FORBIDDEN", message: "This API key cannot view tickets for this project." } }, 403);
+  }
+
+  const requestedLimit = Number(new URL(request.url).searchParams.get("limit") ?? "50");
+  const limit = Number.isSafeInteger(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 100) : 50;
+  const rows = await db
+    .select({
+      id: tickets.id, ticketNumber: tickets.ticketNumber, title: tickets.title, description: tickets.description,
+      status: tickets.status, priority: tickets.priority, category: tickets.category, department: tickets.department,
+      location: tickets.location, dueDate: tickets.dueDate, requesterId: tickets.requesterId, assigneeId: tickets.assigneeId,
+      createdAt: tickets.createdAt, updatedAt: tickets.updatedAt,
+    })
+    .from(tickets)
+    .where(eq(tickets.projectId, project.id))
+    .orderBy(desc(tickets.updatedAt))
+    .limit(limit);
+  return response({ data: { project: { id: project.id, code: project.name, title: project.title }, tickets: rows.map((ticket) => ({ ...ticket, dueDate: ticket.dueDate?.toISOString() ?? null, createdAt: ticket.createdAt.toISOString(), updatedAt: ticket.updatedAt.toISOString() })) } }, 200);
 }
