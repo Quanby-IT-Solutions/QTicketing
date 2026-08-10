@@ -6,7 +6,6 @@ import {
   EllipsisVerticalIcon,
   EyeIcon,
   LoaderCircle,
-  MessageSquarePlusIcon,
   PencilIcon,
   Trash2Icon,
 } from "lucide-react";
@@ -27,7 +26,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { TicketCommentDialog } from "@/components/ticket-comment-dialog";
 import { TicketDetailsDialog } from "@/components/ticket-details-dialog";
 import {
   DropdownMenu,
@@ -60,7 +58,6 @@ export function TicketActionsMenu({ ticket }: { ticket: TicketActionsMenuTicket 
   const router = useRouter();
   const [detailsOpen, setDetailsOpen] = React.useState(false);
   const [editOpen, setEditOpen] = React.useState(false);
-  const [commentOpen, setCommentOpen] = React.useState(false);
   const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
   const canMutate = ticket.canEdit;
@@ -145,10 +142,6 @@ export function TicketActionsMenu({ ticket }: { ticket: TicketActionsMenuTicket 
                     Edit ticket
                   </DropdownMenuItem>
                 ) : null}
-                <DropdownMenuItem onClick={() => setCommentOpen(true)}>
-                  <MessageSquarePlusIcon aria-hidden="true" />
-                  Add comment
-                </DropdownMenuItem>
               </DropdownMenuGroup>
 
               {ticket.canDelete ? (
@@ -185,19 +178,6 @@ export function TicketActionsMenu({ ticket }: { ticket: TicketActionsMenuTicket 
           onOpenChange={setEditOpen}
           open={editOpen}
           ticket={editableTicket}
-        />
-      ) : null}
-
-      {canMutate ? (
-        <TicketCommentDialog
-          hideTrigger
-          onOpenChange={setCommentOpen}
-          open={commentOpen}
-          ticket={{
-            id: ticket.id,
-            ticketNumber: ticket.ticketNumber,
-            title: ticket.title,
-          }}
         />
       ) : null}
 

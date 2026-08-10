@@ -93,7 +93,7 @@ function validateTicketForm(formData: FormData): FormErrors {
   if (title.length < 3) errors.title = "Enter a title with at least 3 characters."
   else if (title.length > 160) errors.title = "Keep the title to 160 characters or fewer."
 
-  if (description.length < 10) errors.description = "Add at least 10 characters of detail."
+  if (description.length < 1) errors.description = "Enter a description."
   else if (description.length > 5000) errors.description = "Keep the description to 5,000 characters or fewer."
 
   if (!projectId) errors.projectId = "Select a project."
@@ -329,7 +329,6 @@ function CreateTicketDialogForm({
               disabled={isPending}
               id="create-ticket-description"
               maxLength={5000}
-              minLength={10}
               name="description"
               placeholder="What happened, what did you expect, and what have you already tried?"
               required

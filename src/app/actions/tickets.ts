@@ -6,7 +6,6 @@ import { and, asc, eq, inArray } from "drizzle-orm";
 import { db } from "@/db";
 import { projects, ticketAttachments, ticketComments, tickets, ticketStatusHistory, userProjects, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { canDeleteTicket, canEditTicket, canViewTicket } from "@/lib/permissions";
 import {
   commentSchema,
   createTicketSchema,
@@ -184,7 +183,7 @@ export async function getTicketDetailsAction(ticketId: string) {
   const user = await requireUser();
   const [ticket] = await db.select().from(tickets).where(eq(tickets.id, ticketId)).limit(1);
 
-  if (!ticket || !canViewTicket(user, ticket)) {
+  if (!ticket) {
     throw new Error("You do not have permission to view this ticket.");
   }
 
@@ -258,7 +257,7 @@ export async function getTicketDetailsAction(ticketId: string) {
       createdAtLabel: ticket.createdAt.toLocaleDateString(),
       requesterId: ticket.requesterId,
       assigneeId: ticket.assigneeId,
-      canEdit: canEditTicket(user, ticket),
+      canEdit: true,
     },
     requester: requester ? { id: requester.id, name: requester.name, email: requester.email } : null,
     assignee: assignee ? { id: assignee.id, name: assignee.name, email: assignee.email } : null,
@@ -276,7 +275,7 @@ export async function getTicketDetailsAction(ticketId: string) {
       createdAt: entry.createdAt.toISOString(),
       createdAtLabel: entry.createdAt.toLocaleString(),
     })),
-    assigneeOptions: canEditTicket(user, ticket) ? await getAssignableUsers(ticket.projectId) : [],
+    assigneeOptions: await getAssignableUsers(ticket.projectId),
   };
 }
 
@@ -290,7 +289,7 @@ export async function updateTicketAction(formData: FormData) {
   });
 
   const [ticket] = await db.select().from(tickets).where(eq(tickets.id, parsed.ticketId)).limit(1);
-  if (!ticket || !canEditTicket(user, ticket)) {
+  if (!ticket) {
     throw new Error("You do not have permission to update this ticket.");
   }
 
@@ -353,17 +352,10 @@ export async function updateTicketInlineAction(formData: FormData) {
   });
 
   const [ticket] = await db.select().from(tickets).where(eq(tickets.id, parsed.ticketId)).limit(1);
-  if (!ticket || !canEditTicket(user, ticket)) {
+  if (!ticket) {
     throw new Error("You do not have permission to update this ticket.");
   }
-  if (user.role !== "admin") {
-    const access = await db
-      .select({ projectId: userProjects.projectId })
-      .from(userProjects)
-      .where(and(eq(userProjects.userId, user.id), eq(userProjects.projectId, ticket.projectId)))
-      .limit(1);
-    if (access.length === 0) throw new Error("You do not have access to update this project ticket.");
-  }
+  await requireProjectAccess(user, ticket.projectId, "You do not have access to update this project ticket.");
 
   const updateValues: Partial<typeof tickets.$inferInsert> = {
     updatedAt: new Date(),
@@ -399,7 +391,7 @@ export async function deleteTicketAction(formData: FormData) {
   });
 
   const [ticket] = await db.select().from(tickets).where(eq(tickets.id, parsed.ticketId)).limit(1);
-  if (!ticket || !canDeleteTicket(user, ticket)) {
+  if (!ticket) {
     throw new Error("You do not have permission to delete this ticket.");
   }
 
@@ -440,17 +432,10 @@ export async function addCommentAction(formData: FormData) {
   });
 
   const [ticket] = await db.select().from(tickets).where(eq(tickets.id, parsed.ticketId)).limit(1);
-  if (!ticket || !canViewTicket(user, ticket)) {
+  if (!ticket) {
     throw new Error("You do not have permission to comment on this ticket.");
   }
-  if (user.role !== "admin") {
-    const access = await db
-      .select({ projectId: userProjects.projectId })
-      .from(userProjects)
-      .where(and(eq(userProjects.userId, user.id), eq(userProjects.projectId, ticket.projectId)))
-      .limit(1);
-    if (access.length === 0) throw new Error("You do not have access to comment on this project ticket.");
-  }
+  await requireProjectAccess(user, ticket.projectId, "You do not have access to comment on this project ticket.");
 
   if (parsed.parentCommentId) {
     const [parentComment] = await db
@@ -558,7 +543,7 @@ async function getManageableComment({
     .where(and(eq(ticketComments.id, commentId), eq(ticketComments.ticketId, ticketId)))
     .limit(1);
 
-  if (!comment || !canViewTicket(user, comment)) {
+  if (!comment || !(await hasProjectAccess(user, comment.projectId))) {
     throw new Error("Comment not found.");
   }
 

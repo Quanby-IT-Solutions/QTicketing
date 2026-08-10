@@ -23,7 +23,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { db } from "@/db";
 import { projects, ticketAttachments, ticketComments, ticketStatusHistory, tickets, userProjects, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { canViewTicket } from "@/lib/permissions";
 import { getAttachmentDownloadUrl } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
@@ -55,7 +54,7 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
   const user = await requireUser();
   const [ticket] = await db.select().from(tickets).where(eq(tickets.id, id)).limit(1);
 
-  if (!ticket || !canViewTicket(user, ticket)) notFound();
+  if (!ticket) notFound();
   if (user.role !== "admin") {
     const access = await db
       .select({ projectId: userProjects.projectId })

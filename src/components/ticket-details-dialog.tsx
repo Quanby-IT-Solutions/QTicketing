@@ -9,6 +9,7 @@ import {
   FolderKanban,
   LoaderCircle,
   MapPin,
+  MessageSquarePlus,
   MessageSquareText,
   Paperclip,
   PencilIcon,
@@ -25,7 +26,6 @@ import {
   TicketPriorityBadge,
   TicketStatusBadge,
 } from "@/components/ticket-badge";
-import { TicketCommentDialog } from "@/components/ticket-comment-dialog";
 import { TicketConversation } from "@/components/ticket-conversation";
 import { Button } from "@/components/ui/button";
 import {
@@ -105,10 +105,14 @@ function editableTicket(ticket: TicketDetails["ticket"]): EditableTicket {
 }
 
 function TicketDetailsContent({
+  commentOpen,
   details,
+  onCommentOpenChange,
   onRefresh,
 }: {
+  commentOpen: boolean;
   details: TicketDetails;
+  onCommentOpenChange: (open: boolean) => void;
   onRefresh: () => Promise<void>;
 }) {
   const {
@@ -203,20 +207,19 @@ function TicketDetailsContent({
                 Keep updates and decisions together with the ticket.
               </CardDescription>
               <CardAction>
-                <TicketCommentDialog
-                  onPosted={onRefresh}
-                  ticket={{
-                    id: ticket.id,
-                    ticketNumber: ticket.ticketNumber,
-                    title: ticket.title,
-                  }}
-                />
+                <Button onClick={() => onCommentOpenChange(true)} type="button">
+                  <MessageSquarePlus data-icon="inline-start" />
+                  Add comment
+                </Button>
               </CardAction>
             </CardHeader>
             <CardContent>
               <TicketConversation
+                commentOpen={commentOpen}
                 comments={comments}
+                onCommentOpenChange={onCommentOpenChange}
                 onRefresh={onRefresh}
+                showAddCommentButton={false}
                 ticket={{
                   id: ticket.id,
                   ticketNumber: ticket.ticketNumber,
@@ -330,6 +333,7 @@ export function TicketDetailsDialog({
     message: string;
   } | null>(null);
   const [editOpen, setEditOpen] = React.useState(false);
+  const [commentOpen, setCommentOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
   const currentDetails = details?.ticket.id === ticket.id ? details : null;
   const currentError = error?.ticketId === ticket.id ? error.message : null;
@@ -412,7 +416,9 @@ export function TicketDetailsDialog({
             </div>
           ) : currentDetails ? (
             <TicketDetailsContent
+              commentOpen={commentOpen}
               details={currentDetails}
+              onCommentOpenChange={setCommentOpen}
               onRefresh={refreshDetails}
             />
           ) : (

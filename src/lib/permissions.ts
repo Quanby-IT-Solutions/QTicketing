@@ -8,24 +8,22 @@ type UserLike = {
 type TicketLike = {
   requesterId: string;
   assigneeId: string | null;
-  projectId?: string;
+  projectId: string;
 };
 
 type ProjectAccessLike = {
   projectIds?: string[];
 };
 
-export function canViewTicket(user: UserLike, ticket: TicketLike) {
-  return user.role === "admin" || user.role === "agent" || ticket.requesterId === user.id;
+export function canViewTicket(user: UserLike & ProjectAccessLike, ticket: TicketLike) {
+  return canAccessProject(user, ticket.projectId);
 }
 
-export function canEditTicket(user: UserLike, ticket: TicketLike) {
-  return user.role === "admin" || user.role === "agent" || ticket.requesterId === user.id;
+export function canEditTicket(user: UserLike & ProjectAccessLike, ticket: TicketLike) {
+  return canAccessProject(user, ticket.projectId);
 }
 
-export function canDeleteTicket(user: UserLike, ticket: TicketLike) {
-  // Deleting is permanent, but for now the same people who can edit a ticket
-  // can delete it: admins, agents, and the requester who created it.
+export function canDeleteTicket(user: UserLike & ProjectAccessLike, ticket: TicketLike) {
   return canEditTicket(user, ticket);
 }
 

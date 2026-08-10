@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { DownloadIcon, FileTextIcon, MessageSquareTextIcon, MoreHorizontalIcon, PencilIcon, ReplyIcon, Trash2Icon } from "lucide-react";
+import { DownloadIcon, FileTextIcon, MessageSquarePlusIcon, MessageSquareTextIcon, MoreHorizontalIcon, PencilIcon, ReplyIcon, SendIcon, Trash2Icon } from "lucide-react";
 import { addCommentAction, deleteCommentAction, updateCommentAction } from "@/app/actions/tickets";
 import { TicketCommentAttachmentField, formatFileSize } from "@/components/ticket-comment-attachment-field";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -380,6 +380,92 @@ function InlineReplyForm({
   );
 }
 
+function InlineCommentForm({
+  onCancel,
+  onRefresh,
+  ticket,
+}: {
+  onCancel: () => void;
+  onRefresh?: () => Promise<void> | void;
+  ticket: ConversationTicket;
+}) {
+  const router = useRouter();
+  const [error, setError] = React.useState<string | null>(null);
+  const [files, setFiles] = React.useState<File[]>([]);
+  const [isPending, startTransition] = React.useTransition();
+  const formRef = React.useRef<HTMLFormElement>(null);
+  const textareaId = React.useId();
+
+  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError(null);
+    const formData = new FormData(event.currentTarget);
+    for (const file of files) formData.append("attachments", file);
+
+    startTransition(async () => {
+      try {
+        await addCommentAction(formData);
+        formRef.current?.reset();
+        onCancel();
+        if (onRefresh) await onRefresh();
+        else router.refresh();
+      } catch (submitError) {
+        setError(getErrorMessage(submitError));
+      }
+    });
+  }
+
+  return (
+    <form
+      aria-busy={isPending}
+      className="space-y-3 rounded-xl border bg-background p-3 shadow-sm"
+      onSubmit={handleSubmit}
+      ref={formRef}
+    >
+      <input name="ticketId" type="hidden" value={ticket.id} />
+      <div className="space-y-2">
+        <Label htmlFor={textareaId}>Add a comment</Label>
+        <Textarea
+          autoFocus
+          className="min-h-24 resize-y"
+          disabled={isPending}
+          id={textareaId}
+          maxLength={3000}
+          name="body"
+          placeholder="Share an update or ask a question..."
+          required
+        />
+        <p className="text-xs text-muted-foreground">
+          Everyone with access to this ticket can see this message.
+        </p>
+      </div>
+      <TicketCommentAttachmentField
+        disabled={isPending}
+        files={files}
+        inputId={`${textareaId}-attachments`}
+        onFilesChange={setFiles}
+      />
+      {error ? (
+        <div
+          className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive"
+          role="alert"
+        >
+          {error}
+        </div>
+      ) : null}
+      <div className="flex justify-end gap-2">
+        <Button disabled={isPending} onClick={onCancel} type="button" variant="outline">
+          Cancel
+        </Button>
+        <Button disabled={isPending} type="submit">
+          <SendIcon data-icon="inline-start" />
+          {isPending ? "Posting..." : "Post comment"}
+        </Button>
+      </div>
+    </form>
+  );
+}
+
 function InlineEditCommentForm({
   comment,
   onCancel,
@@ -456,14 +542,26 @@ export function TicketConversation({
   ticket,
   comments,
   onRefresh,
+  commentOpen: controlledCommentOpen,
+  onCommentOpenChange,
+  showAddCommentButton = true,
 }: {
   ticket: ConversationTicket;
   comments: TicketConversationComment[];
   onRefresh?: () => Promise<void> | void;
+  commentOpen?: boolean;
+  onCommentOpenChange?: (open: boolean) => void;
+  showAddCommentButton?: boolean;
 }) {
   const router = useRouter();
   const [replyTarget, setReplyTarget] = React.useState<ReplyTarget | null>(null);
+  const [internalCommentOpen, setInternalCommentOpen] = React.useState(false);
   const commentTree = React.useMemo(() => buildCommentTree(comments), [comments]);
+  const isCommentOpen = controlledCommentOpen ?? internalCommentOpen;
+  const setCommentOpen = React.useCallback((open: boolean) => {
+    if (controlledCommentOpen === undefined) setInternalCommentOpen(open);
+    onCommentOpenChange?.(open);
+  }, [controlledCommentOpen, onCommentOpenChange]);
   const refreshConversation = React.useCallback(async () => {
     if (onRefresh) await onRefresh();
     else router.refresh();
@@ -478,31 +576,48 @@ export function TicketConversation({
     return () => window.clearInterval(intervalId);
   }, [refreshConversation]);
 
-  if (comments.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-10 text-center">
-        <MessageSquareTextIcon className="mb-3 size-7 text-muted-foreground/60" />
-        <p className="text-sm font-medium">No comments yet</p>
-        <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-          Add the first comment to share an update or ask a question.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-5" role="list">
-      {commentTree.map((comment) => (
-        <CommentBranch
-          activeReplyId={replyTarget?.id ?? null}
-          comment={comment}
-          key={comment.id}
-          onCancelReply={() => setReplyTarget(null)}
+    <div className="space-y-5">
+      {showAddCommentButton ? (
+        <div className="flex justify-end">
+          <Button onClick={() => setCommentOpen(!isCommentOpen)} type="button">
+            <MessageSquarePlusIcon data-icon="inline-start" />
+            Add comment
+          </Button>
+        </div>
+      ) : null}
+
+      {isCommentOpen ? (
+        <InlineCommentForm
+          onCancel={() => setCommentOpen(false)}
           onRefresh={refreshConversation}
-          onReply={setReplyTarget}
           ticket={ticket}
         />
-      ))}
+      ) : null}
+
+      {comments.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed py-10 text-center">
+          <MessageSquareTextIcon className="mb-3 size-7 text-muted-foreground/60" />
+          <p className="text-sm font-medium">No comments yet</p>
+          <p className="mt-1 max-w-sm text-xs text-muted-foreground">
+            Add the first comment to share an update or ask a question.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-5" role="list">
+          {commentTree.map((comment) => (
+            <CommentBranch
+              activeReplyId={replyTarget?.id ?? null}
+              comment={comment}
+              key={comment.id}
+              onCancelReply={() => setReplyTarget(null)}
+              onRefresh={refreshConversation}
+              onReply={setReplyTarget}
+              ticket={ticket}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -6,7 +6,6 @@ import { CreateTicketButton } from "@/components/create-ticket-dialog";
 import { TicketsTable } from "@/components/tickets-table";
 import { Badge } from "@/components/ui/badge";
 import { requireUser } from "@/lib/auth";
-import { canDeleteTicket, canEditTicket } from "@/lib/permissions";
 
 export const metadata: Metadata = {
   title: "Tickets",
@@ -56,8 +55,8 @@ export default async function TicketsPage() {
 
   const rows = ticketRows.map((ticket) => ({
     ...ticket,
-    canEdit: canEditTicket(user, ticket),
-    canDelete: canDeleteTicket(user, ticket),
+    canEdit: true,
+    canDelete: true,
   }));
 
   return (

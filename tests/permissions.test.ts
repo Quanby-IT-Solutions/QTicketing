@@ -7,17 +7,17 @@ import {
 } from "@/lib/permissions";
 
 describe("ticket permissions", () => {
-  const ticket = { requesterId: "requester-1", assigneeId: null };
+  const ticket = { projectId: "project-1", requesterId: "requester-1", assigneeId: null };
 
-  it("allows creators to view and edit their tickets", () => {
-    const user = { id: "requester-1", role: "requester" as const };
+  it("allows every assigned project member to view and edit tickets", () => {
+    const user = { id: "requester-2", role: "requester" as const, projectIds: ["project-1"] };
 
     expect(canViewTicket(user, ticket)).toBe(true);
     expect(canEditTicket(user, ticket)).toBe(true);
   });
 
-  it("allows agents and admins across the queue", () => {
-    expect(canViewTicket({ id: "agent-1", role: "agent" as const }, ticket)).toBe(true);
+  it("allows admins across every project", () => {
+    expect(canViewTicket({ id: "admin-1", role: "admin" as const }, ticket)).toBe(true);
     expect(canEditTicket({ id: "admin-1", role: "admin" as const }, ticket)).toBe(true);
   });
 
@@ -26,15 +26,15 @@ describe("ticket permissions", () => {
     expect(canManageUsers({ id: "agent-1", role: "agent" as const })).toBe(false);
   });
 
-  it("allows creators, agents, and admins to delete a ticket", () => {
-    expect(canDeleteTicket({ id: "requester-1", role: "requester" as const }, ticket)).toBe(true);
-    expect(canDeleteTicket({ id: "agent-1", role: "agent" as const }, ticket)).toBe(true);
+  it("allows assigned project members and admins to delete a ticket", () => {
+    expect(canDeleteTicket({ id: "requester-1", role: "requester" as const, projectIds: ["project-1"] }, ticket)).toBe(true);
+    expect(canDeleteTicket({ id: "agent-1", role: "agent" as const, projectIds: ["project-1"] }, ticket)).toBe(true);
     expect(canDeleteTicket({ id: "admin-1", role: "admin" as const }, ticket)).toBe(true);
   });
 
-  it("blocks non-creator requesters from deleting a ticket", () => {
+  it("blocks users without access to the ticket project", () => {
     expect(
-      canDeleteTicket({ id: "requester-2", role: "requester" as const }, ticket),
+      canDeleteTicket({ id: "requester-2", role: "requester" as const, projectIds: ["project-2"] }, ticket),
     ).toBe(false);
   });
 });
