@@ -5,19 +5,17 @@ import { db } from "@/db";
 import { projectAccessRequests, projects, userProjects, users } from "@/db/schema";
 import { hashPassword } from "@/lib/password";
 
-const RMIS_PROJECT_CODE = "RMIS";
-
-export class RmisProjectUnavailableError extends Error {
-  constructor() {
-    super("The RMIS project is missing or inactive.");
-    this.name = "RmisProjectUnavailableError";
+export class IntegrationProjectUnavailableError extends Error {
+  constructor(projectCode: string) {
+    super(`The ${projectCode} project is missing or inactive.`);
+    this.name = "IntegrationProjectUnavailableError";
   }
 }
 
-export class RmisTicketingUserDisabledError extends Error {
+export class IntegrationTicketingUserDisabledError extends Error {
   constructor() {
     super("The matching Ticketing account was disabled by an administrator.");
-    this.name = "RmisTicketingUserDisabledError";
+    this.name = "IntegrationTicketingUserDisabledError";
   }
 }
 
@@ -27,17 +25,18 @@ type ProvisionRmisUserInput = {
   password: string;
 };
 
-export async function provisionRmisTicketingUser(input: ProvisionRmisUserInput) {
+export async function provisionTicketingUser(projectCode: string, input: ProvisionRmisUserInput) {
+  const normalizedProjectCode = projectCode.trim().toUpperCase();
   const email = input.email.trim().toLowerCase();
 
   return db.transaction(async (tx) => {
     const [project] = await tx
       .select({ id: projects.id, name: projects.name, title: projects.title })
       .from(projects)
-      .where(and(eq(projects.name, RMIS_PROJECT_CODE), eq(projects.active, true)))
+      .where(and(eq(projects.name, normalizedProjectCode), eq(projects.active, true)))
       .limit(1);
 
-    if (!project) throw new RmisProjectUnavailableError();
+    if (!project) throw new IntegrationProjectUnavailableError(normalizedProjectCode);
 
     let [user] = await tx
       .select({
@@ -91,7 +90,7 @@ export async function provisionRmisTicketingUser(input: ProvisionRmisUserInput) 
     }
 
     if (!user) throw new Error("Unable to resolve the provisioned Ticketing user.");
-    if (!user.active) throw new RmisTicketingUserDisabledError();
+    if (!user.active) throw new IntegrationTicketingUserDisabledError();
 
     if (user.status !== "approved") {
       const [approvedUser] = await tx
@@ -136,4 +135,12 @@ export async function provisionRmisTicketingUser(input: ProvisionRmisUserInput) 
       project,
     };
   });
+}
+
+// Backward-compatible exports for the existing RMIS integration route.
+export const RmisProjectUnavailableError = IntegrationProjectUnavailableError;
+export const RmisTicketingUserDisabledError = IntegrationTicketingUserDisabledError;
+
+export function provisionRmisTicketingUser(input: ProvisionRmisUserInput) {
+  return provisionTicketingUser("RMIS", input);
 }

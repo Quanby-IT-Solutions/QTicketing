@@ -90,7 +90,7 @@ The body is the same as the project ticket body, plus the authenticated RMIS use
 }
 ```
 
-Ticketing resolves that email to its own account and only creates the ticket when the user is active, approved, and has RMIS project access. The integration key is limited to RMIS and cannot create QLEGAL tickets. Configure its value as `RMIS_TICKET_API_KEY` in Ticketing and `TICKETING_TICKET_API_KEY` in the RMIS backend.
+Ticketing resolves that email to its own account and only creates the ticket when the user is active, approved, and has the route project's access. Configure the global secret as `TICKETING_TICKET_API_KEY` in Ticketing and use the same value as `TICKETING_TICKET_API_KEY` in each approved project backend.
 
 ## Account provisioning credential
 

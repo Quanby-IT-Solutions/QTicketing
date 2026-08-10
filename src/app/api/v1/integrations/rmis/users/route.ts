@@ -22,7 +22,8 @@ function response(body: unknown, status: number, extraHeaders?: HeadersInit) {
 }
 
 export async function POST(request: Request) {
-  if (!env.RMIS_PROVISIONING_TOKEN) {
+  const provisioningToken = env.TICKETING_PROVISIONING_TOKEN ?? env.RMIS_PROVISIONING_TOKEN;
+  if (!provisioningToken) {
     return response(
       { error: { code: "INTEGRATION_NOT_CONFIGURED", message: "RMIS provisioning is not configured." } },
       503,
@@ -32,7 +33,7 @@ export async function POST(request: Request) {
   if (
     !hasValidRmisProvisioningAuthorization(
       request.headers.get("authorization"),
-      env.RMIS_PROVISIONING_TOKEN,
+      provisioningToken,
     )
   ) {
     return response(

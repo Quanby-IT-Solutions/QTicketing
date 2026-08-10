@@ -24,14 +24,15 @@ function response(body: unknown, status: number, extraHeaders?: HeadersInit) {
 }
 
 export async function POST(request: Request) {
-  if (!env.RMIS_TICKET_API_KEY) {
+  const ticketApiKey = env.TICKETING_TICKET_API_KEY ?? env.RMIS_TICKET_API_KEY;
+  if (!ticketApiKey) {
     return response(
       { error: { code: "INTEGRATION_NOT_CONFIGURED", message: "RMIS ticket creation is not configured." } },
       503,
     );
   }
 
-  if (!hasValidBearerAuthorization(request.headers.get("authorization"), env.RMIS_TICKET_API_KEY)) {
+  if (!hasValidBearerAuthorization(request.headers.get("authorization"), ticketApiKey)) {
     return response(
       { error: { code: "UNAUTHORIZED", message: "A valid Bearer integration key is required." } },
       401,

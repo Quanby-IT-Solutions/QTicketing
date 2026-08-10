@@ -12,6 +12,8 @@ const envSchema = z.object({
   AWS_REGION: z.string().min(1),
   S3_BUCKET_NAME: z.string().min(1),
   SESSION_SECRET: z.string().min(24).optional(),
+  TICKETING_PROVISIONING_TOKEN: optionalProvisioningToken,
+  TICKETING_TICKET_API_KEY: optionalProvisioningToken,
   RMIS_PROVISIONING_TOKEN: optionalProvisioningToken,
   RMIS_TICKET_API_KEY: optionalProvisioningToken,
 });
@@ -23,6 +25,8 @@ export const env = envSchema.parse({
   AWS_REGION: process.env.AWS_REGION ?? "ap-southeast-1",
   S3_BUCKET_NAME: process.env.S3_BUCKET_NAME ?? "missing-ticketing-bucket",
   SESSION_SECRET: process.env.SESSION_SECRET,
+  TICKETING_PROVISIONING_TOKEN: process.env.TICKETING_PROVISIONING_TOKEN,
+  TICKETING_TICKET_API_KEY: process.env.TICKETING_TICKET_API_KEY,
   RMIS_PROVISIONING_TOKEN: process.env.RMIS_PROVISIONING_TOKEN,
   RMIS_TICKET_API_KEY: process.env.RMIS_TICKET_API_KEY,
 });

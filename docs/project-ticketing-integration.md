@@ -1,39 +1,45 @@
 # Project-to-Ticketing integration
 
-Use this guide when another Quanby project, such as RMIS, QLEGAL, DMS, LMS, or HRIS, needs to keep its own user database while also creating matching users and tickets in Ticketing.
+Use this guide to connect any Quanby project—RMIS, QLEGAL, DMS, LMS, HRIS, or a future project—to Ticketing. Each project keeps its own database and calls Ticketing from its backend to synchronize users and create tickets.
 
-The external project remains the source of truth for its own account. It saves the account in its database first, then calls Ticketing from its backend. Do not call Ticketing directly from browser code: every Ticketing secret belongs only in the external project's backend environment or secret manager.
+The project backend is the only caller of these integration endpoints. Do not expose either secret or call these endpoints from browser code.
 
-## Required deployment secrets
+## One-time Ticketing configuration
 
-Use different random secrets for account provisioning and ticket creation.
+Configure these two secrets once in the Ticketing deployment. They work for every active Ticketing project.
 
 ```env
-# Example: RMIS deployment. Give every project two distinct secrets.
-# For QLEGAL, use QLEGAL_PROVISIONING_TOKEN and QLEGAL_TICKET_API_KEY instead.
-RMIS_PROVISIONING_TOKEN=<random-32-or-more-character-secret>
-RMIS_TICKET_API_KEY=<another-random-32-or-more-character-secret>
+TICKETING_PROVISIONING_TOKEN=<random-32-or-more-character-secret>
+TICKETING_TICKET_API_KEY=<another-random-32-or-more-character-secret>
+```
 
-# RMIS backend deployment (the values match Ticketing's two RMIS values)
+Each connected project backend uses the same values under the same names:
+
+```env
 TICKETING_API_URL=https://ticketing.quanbyit.com
-TICKETING_PROVISIONING_TOKEN=<same-value-as-RMIS_PROVISIONING_TOKEN>
-TICKETING_TICKET_API_KEY=<same-value-as-RMIS_TICKET_API_KEY>
+TICKETING_PROVISIONING_TOKEN=<same-value-as-Ticketing-TICKETING_PROVISIONING_TOKEN>
+TICKETING_TICKET_API_KEY=<same-value-as-Ticketing-TICKETING_TICKET_API_KEY>
 ```
 
-Run the Ticketing API-key migration before deployment:
+When you add QLEGAL, DMS, LMS, or another project, create and activate that project in Ticketing. No additional Ticketing environment variable or redeploy is required.
 
-```bash
-pnpm db:migrate
-```
+## Integration URLs
 
-## 1. Register a user in both databases
+Replace `{PROJECT_CODE}` with the Ticketing project code, for example `RMIS`, `QLEGAL`, or `DMS`. The code is case-insensitive.
 
-When a user registers in a project, create that project's user with its existing registration code first. After that local database operation succeeds, call the matching Ticketing user-provisioning endpoint from the project's backend.
+| Purpose | Endpoint | Credential |
+| --- | --- | --- |
+| Sync a registered user | `POST /api/v1/integrations/{PROJECT_CODE}/users` | `TICKETING_PROVISIONING_TOKEN` |
+| Create a ticket as the synced user | `POST /api/v1/integrations/{PROJECT_CODE}/tickets` | `TICKETING_TICKET_API_KEY` |
 
-The currently implemented server-to-server provisioning endpoint is RMIS:
+The project comes from the URL, not the JSON body. A call to `/api/v1/integrations/QLEGAL/tickets` can create only QLEGAL tickets.
+
+## 1. Save the user locally, then provision Ticketing
+
+First use the project's existing registration flow to save the account in its own database. Once that succeeds, its backend calls Ticketing to create or update the matching Ticketing account and grant access to that project.
 
 ```http
-POST /api/v1/integrations/rmis/users
+POST /api/v1/integrations/QLEGAL/users
 Authorization: Bearer <TICKETING_PROVISIONING_TOKEN>
 Content-Type: application/json
 ```
@@ -46,9 +52,7 @@ Content-Type: application/json
 }
 ```
 
-Ticketing creates the user as an active, approved requester and grants the `RMIS` project. Repeated calls are safe: Ticketing does not create a duplicate user or duplicate project assignment.
-
-Example server-side RMIS registration flow:
+Ticketing creates an active, approved requester and assigns QLEGAL access. The operation is idempotent: repeating it does not create duplicate users or project assignments.
 
 ```ts
 type RegistrationInput = {
@@ -57,13 +61,13 @@ type RegistrationInput = {
   password: string
 }
 
-export async function registerRmisUser(input: RegistrationInput) {
-  // 1. Existing RMIS registration. This writes the account to the RMIS DB.
-  const rmisUser = await createRmisUserInDatabase(input)
+export async function registerProjectUser(input: RegistrationInput) {
+  // 1. The existing project registration writes to its own database.
+  const localUser = await createProjectUserInDatabase(input)
 
-  // 2. Copy the account to Ticketing from the RMIS backend only.
+  // 2. The project backend provisions Ticketing. Never run this in the browser.
   const response = await fetch(
-    `${process.env.TICKETING_API_URL}/api/v1/integrations/rmis/users`,
+    `${process.env.TICKETING_API_URL}/api/v1/integrations/QLEGAL/users`,
     {
       method: "POST",
       headers: {
@@ -71,34 +75,30 @@ export async function registerRmisUser(input: RegistrationInput) {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        name: rmisUser.name,
-        email: rmisUser.email,
+        name: localUser.name,
+        email: localUser.email,
         password: input.password,
       }),
     },
   )
 
   if (!response.ok) {
-    // Do not log the password or either secret. Record a retryable sync failure.
+    // Never log the password or secret. Record a retryable sync failure.
     throw new Error("Ticketing user provisioning failed")
   }
 
-  return rmisUser
+  return localUser
 }
 ```
 
-There is no shared transaction between the project database and Ticketing. If Ticketing is temporarily unavailable, keep the successful local registration and retry the Ticketing provisioning call on the user's next successful email login. The existing RMIS Better Auth hook already follows this pattern.
+There is no shared transaction across the project and Ticketing databases. If Ticketing is temporarily unavailable, keep the successful local registration and retry the idempotent provisioning request on the user's next successful login.
 
-For QLEGAL, DMS, LMS, or HRIS, use the same sequence but give the project its own provisioning endpoint and secret, for example `POST /api/v1/integrations/qlegal/users` with `QLEGAL_PROVISIONING_TOKEN`. That endpoint must grant only the matching `QLEGAL` project—never accept the project code from the browser or request body.
+## 2. Create a ticket from any project
 
-## 2. Create a ticket automatically from a project
-
-For the normal project application flow, the project backend uses one integration key. It identifies the current project user from its own server-side session and sends that user's email. Ticketing checks that the matching Ticketing user is active, approved, and still has access to that exact project before creating the ticket under that user's name.
-
-The currently implemented automatic ticket endpoint is RMIS:
+The project backend identifies the signed-in local user from its server-side session, then calls the matching Ticketing project route. Ticketing resolves that email to its own account and checks that the account is active, approved, and currently assigned to the requested project.
 
 ```http
-POST /api/v1/integrations/rmis/tickets
+POST /api/v1/integrations/QLEGAL/tickets
 Authorization: Bearer <TICKETING_TICKET_API_KEY>
 Content-Type: application/json
 ```
@@ -106,35 +106,33 @@ Content-Type: application/json
 ```json
 {
   "requesterEmail": "juan@example.com",
-  "title": "Unable to archive a record",
-  "description": "Archiving the record returns an error.",
+  "title": "Unable to submit a legal request",
+  "description": "The request form shows an error after submission.",
   "priority": "normal",
   "category": "Software",
-  "department": "Records",
+  "department": "Legal",
   "location": "Main Office",
   "dueDate": "2026-08-20"
 }
 ```
 
-Server-side RMIS example:
-
 ```ts
-type CreateRmisTicketInput = {
+type CreateTicketInput = {
   title: string
   description: string
   priority?: "low" | "normal" | "high"
   category: string
   department?: string
   location?: string
-  dueDate?: string // YYYY-MM-DD
+  dueDate?: string
 }
 
 export async function createTicketInTicketing(
-  rmisSessionUser: { email: string },
-  input: CreateRmisTicketInput,
+  sessionUser: { email: string },
+  input: CreateTicketInput,
 ) {
   const response = await fetch(
-    `${process.env.TICKETING_API_URL}/api/v1/integrations/rmis/tickets`,
+    `${process.env.TICKETING_API_URL}/api/v1/integrations/QLEGAL/tickets`,
     {
       method: "POST",
       headers: {
@@ -142,7 +140,7 @@ export async function createTicketInTicketing(
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        requesterEmail: rmisSessionUser.email, // from the backend session, never from the browser body
+        requesterEmail: sessionUser.email, // derive on the backend, never trust browser input
         ...input,
       }),
     },
@@ -157,40 +155,30 @@ export async function createTicketInTicketing(
 }
 ```
 
-Successful responses return `201 Created` with the Ticketing ticket ID and ticket number. The endpoint only creates `RMIS` tickets. The RMIS key cannot create QLEGAL, DMS, LMS, or HRIS tickets.
+A successful response is `201 Created` and includes the Ticketing ticket ID and number. JSON integration endpoints do not accept attachments yet.
 
-For every additional project, create the equivalent locked-down endpoint and key, such as `POST /api/v1/integrations/qlegal/tickets` with `QLEGAL_TICKET_API_KEY`. It must always derive the project from the route/configuration and only create QLEGAL tickets. Do not use one universal integration secret that can create tickets in every project.
+## 3. Individual Ticketing API keys
 
-## 3. Personal API-key ticket creation
-
-Use this only when an individual Ticketing user needs to call the Ticketing API directly from a trusted backend or automation. The user signs in to Ticketing, opens **Settings → API keys**, creates a key, and copies the one-time `qtk_live_...` value.
+For trusted automations owned by a specific Ticketing user, create a one-time `qtk_live_...` key in **Settings → API keys** and use:
 
 ```http
-POST /api/v1/projects/RMIS/tickets
+POST /api/v1/projects/QLEGAL/tickets
 Authorization: Bearer qtk_live_<user-api-key>
 Content-Type: application/json
 ```
 
-```json
-{
-  "title": "Unable to archive a record",
-  "description": "Archiving the record returns an error.",
-  "priority": "normal",
-  "category": "Software"
-}
-```
+This user key works only for projects the key owner currently has access to. It is separate from the shared project-backend integration secrets.
 
-The API key represents its Ticketing owner. It can create tickets only in projects the owner can currently access. For example, the same key can call `/api/v1/projects/QLEGAL/tickets` only if the owner has QLEGAL access; it can call `/api/v1/projects/DMS/tickets` only if it also has DMS access. This endpoint already supports every active project code.
-
-## Access results
+## Expected results
 
 | Condition | Result |
 | --- | --- |
-| User is active, approved, and has the endpoint's project access | Ticket is created under that user |
-| User is disabled or not approved | `403 REQUESTER_FORBIDDEN` |
-| User no longer has the endpoint's project access | `403 REQUESTER_FORBIDDEN` |
-| RMIS integration key is missing or wrong | `401 UNAUTHORIZED` |
-| Endpoint project is inactive or missing | `503 PROJECT_UNAVAILABLE` |
-| Invalid ticket data | `400 VALIDATION_ERROR` |
+| User is active, approved, and has the URL project's access | Ticket is created under that user |
+| User is disabled, pending, or has no project access | `403 REQUESTER_FORBIDDEN` |
+| Global integration credential is missing or wrong | `401 UNAUTHORIZED` |
+| Requested project is inactive or missing | `503 PROJECT_UNAVAILABLE` |
+| Invalid request body | `400 VALIDATION_ERROR` |
 
-The JSON ticket endpoints do not upload attachments. Add Ticketing attachments after ticket creation until a multipart attachment endpoint is available.
+## Security note
+
+The shared secrets make onboarding a new project simple, but a leaked secret from any connected backend could access every integration endpoint. Keep them in a backend-only secret manager, restrict deployment access, and rotate both values in Ticketing and every connected project immediately if exposure is suspected.
