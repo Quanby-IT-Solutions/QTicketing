@@ -1,4 +1,4 @@
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { projects, ticketAttachments, tickets } from "@/db/schema";
@@ -30,4 +30,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
     await db.update(tickets).set({ updatedAt: new Date() }).where(eq(tickets.id, ticket.id));
     return response({ data: { attachment: { ...attachment, createdAt: attachment.createdAt.toISOString() } } }, 201);
   } catch (error) { console.error("API ticket attachment upload failed.", error); return response({ error: { code: "UPLOAD_FAILED", message: "Unable to upload the attachment." } }, 502); }
+}
+
+export async function GET(request: Request, { params }: { params: Promise<{ projectCode: string; ticketId: string }> }) {
+  const user = await authenticateApiRequest(request);
+  if (!user) return response({ error: { code: "UNAUTHORIZED", message: "A valid Bearer API key is required." } }, 401, { "WWW-Authenticate": "Bearer" });
+  const { projectCode, ticketId } = await params;
+  const [ticket] = await db.select().from(tickets).where(eq(tickets.id, ticketId)).limit(1);
+  if (!ticket) return response({ error: { code: "TICKET_NOT_FOUND", message: "The ticket was not found." } }, 404);
+  const [project] = await db.select({ id: projects.id }).from(projects).where(and(eq(projects.id, ticket.projectId), eq(projects.name, projectCode.trim().toUpperCase()), eq(projects.active, true))).limit(1);
+  if (!project) return response({ error: { code: "TICKET_NOT_FOUND", message: "The ticket was not found in this active project." } }, 404);
+  if (user.role !== "admin" && !user.projectIds.includes(project.id)) return response({ error: { code: "FORBIDDEN", message: "This API key cannot view files for this project." } }, 403);
+  const attachments = await db.select({ id: ticketAttachments.id, filename: ticketAttachments.filename, mimeType: ticketAttachments.mimeType, size: ticketAttachments.size, createdAt: ticketAttachments.createdAt }).from(ticketAttachments).where(and(eq(ticketAttachments.ticketId, ticket.id), isNull(ticketAttachments.commentId)));
+  return response({ data: { attachments: attachments.map((attachment) => ({ ...attachment, createdAt: attachment.createdAt.toISOString() })) } }, 200);
 }

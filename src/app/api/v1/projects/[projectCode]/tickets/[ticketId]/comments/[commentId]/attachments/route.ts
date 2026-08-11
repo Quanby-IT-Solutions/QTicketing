@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { projects, ticketAttachments, ticketComments, tickets } from "@/db/schema";
 import { authenticateApiRequest } from "@/lib/api-auth";
-import { attachmentSizeErrorMessage, maxAttachmentBytes, uploadTicketAttachment } from "@/lib/storage";
+import { attachmentSizeErrorMessage, getTicketAttachmentObject, maxAttachmentBytes, uploadTicketAttachment } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -29,4 +29,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
     await db.update(tickets).set({ updatedAt: new Date() }).where(eq(tickets.id, comment.ticketId));
     return response({ data: { attachment: { ...attachment, createdAt: attachment.createdAt.toISOString() } } }, 201);
   } catch (error) { console.error("API comment attachment upload failed.", error); return response({ error: { code: "UPLOAD_FAILED", message: "Unable to upload the attachment." } }, 502); }
+}
+
+export async function GET(request: Request, { params }: { params: Promise<{ projectCode: string; ticketId: string; commentId: string }> }) {
+  const user = await authenticateApiRequest(request); if (!user) return response({ error: { code: "UNAUTHORIZED", message: "A valid Bearer API key is required." } }, 401, { "WWW-Authenticate": "Bearer" });
+  const { projectCode, ticketId, commentId } = await params;
+  const [comment] = await db.select({ id: ticketComments.id, projectId: tickets.projectId }).from(ticketComments).innerJoin(tickets, eq(ticketComments.ticketId, tickets.id)).where(and(eq(ticketComments.id, commentId), eq(ticketComments.ticketId, ticketId))).limit(1);
+  if (!comment) return response({ error: { code: "COMMENT_NOT_FOUND", message: "The comment was not found." } }, 404);
+  const [project] = await db.select({ id: projects.id }).from(projects).where(and(eq(projects.id, comment.projectId), eq(projects.name, projectCode.trim().toUpperCase()), eq(projects.active, true))).limit(1);
+  if (!project || (user.role !== "admin" && !user.projectIds.includes(project.id))) return response({ error: { code: "FORBIDDEN", message: "This API key cannot view files for this project." } }, 403);
+  const attachments = await db.select({ id: ticketAttachments.id, filename: ticketAttachments.filename, mimeType: ticketAttachments.mimeType, size: ticketAttachments.size, createdAt: ticketAttachments.createdAt }).from(ticketAttachments).where(eq(ticketAttachments.commentId, comment.id));
+  return response({ data: { attachments: attachments.map((attachment) => ({ ...attachment, createdAt: attachment.createdAt.toISOString() })) } }, 200);
 }

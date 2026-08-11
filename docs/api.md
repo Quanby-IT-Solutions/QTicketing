@@ -97,6 +97,10 @@ The host project should expose these authenticated routes to its own web app, th
 | `GET/PATCH/DELETE /api/v1/ticketing/tickets/:ticketId` | `GET/PATCH/DELETE /api/v1/projects/{CODE}/tickets/:ticketId` |
 | `GET/POST /api/v1/ticketing/tickets/:ticketId/comments` | `GET/POST /api/v1/projects/{CODE}/tickets/:ticketId/comments` |
 | `PATCH/DELETE /api/v1/ticketing/tickets/:ticketId/comments/:commentId` | `PATCH/DELETE /api/v1/projects/{CODE}/tickets/:ticketId/comments/:commentId` |
+| `GET /api/v1/ticketing/tickets/:ticketId/attachments` | `GET /api/v1/projects/{CODE}/tickets/:ticketId/attachments` |
+| `GET /api/v1/ticketing/tickets/:ticketId/attachments/:attachmentId` | `GET /api/v1/projects/{CODE}/tickets/:ticketId/attachments/:attachmentId` |
+| `GET /api/v1/ticketing/tickets/:ticketId/comments/:commentId/attachments` | `GET /api/v1/projects/{CODE}/tickets/:ticketId/comments/:commentId/attachments` |
+| `GET /api/v1/ticketing/tickets/:ticketId/comments/:commentId/attachments/:attachmentId` | `GET /api/v1/projects/{CODE}/tickets/:ticketId/comments/:commentId/attachments/:attachmentId` |
 
 Use `parentCommentId` in the comment `POST` body to create a reply. A `PATCH` ticket request can update `title`, `description`, `status`, `priority`, `category`, `department`, `location`, and `dueDate`.
 
@@ -119,6 +123,21 @@ curl --request POST \
 ```
 
 Do not set a manual `Content-Type` header when sending `FormData`; the HTTP client must set the multipart boundary.
+
+### Attachment listing and secure fetch
+
+The host-project ticket-details dialog and comment thread can fetch attachment metadata and files through these authenticated Ticketing API routes. Proxy them through the host backend:
+
+| Method | Ticketing endpoint | Result |
+| --- | --- | --- |
+| `GET` | `/api/v1/projects/{CODE}/tickets/{ticketId}/attachments` | List ticket-level attachments |
+| `GET` | `/api/v1/projects/{CODE}/tickets/{ticketId}/attachments/{attachmentId}` | Stream or download one ticket attachment |
+| `GET` | `/api/v1/projects/{CODE}/tickets/{ticketId}/comments/{commentId}/attachments` | List attachments on a comment or reply |
+| `GET` | `/api/v1/projects/{CODE}/tickets/{ticketId}/comments/{commentId}/attachments/{attachmentId}` | Stream or download one comment/reply attachment |
+
+The browser should open the host project's authenticated download route, not an S3 URL. The host backend validates its session, calls Ticketing with the Bearer credential, and streams the response with the original filename and MIME type. Never return presigned S3 URLs, AWS credentials, or bucket paths to the browser.
+
+These endpoints stream private S3 content through Ticketing after checking the API key owner's current project access. Other projects can now render attachment rows and View/Download actions without sending users to the Ticketing web application.
 
 ### Table status and priority behavior
 
