@@ -19,7 +19,7 @@ import {
 import { collectCommentSubtree } from "@/lib/comment-tree";
 import { createTicket } from "@/lib/services/ticket-creation";
 import { notifyTicketDone } from "@/lib/ticket-notifications";
-import { attachmentSizeErrorMessage, deleteTicketAttachments, getAttachmentDownloadUrl, maxAttachmentBytes, uploadTicketAttachment } from "@/lib/storage";
+import { attachmentSizeErrorMessage, deleteTicketAttachments, maxAttachmentBytes, uploadTicketAttachment } from "@/lib/storage";
 
 type CurrentUser = Awaited<ReturnType<typeof requireUser>>;
 type UserWithRole = {
@@ -198,16 +198,14 @@ export async function getTicketDetailsAction(ticketId: string) {
     .innerJoin(users, eq(ticketStatusHistory.changedById, users.id))
     .where(eq(ticketStatusHistory.ticketId, ticket.id))
     .orderBy(asc(ticketStatusHistory.createdAt));
-  const attachmentLinks = await Promise.all(
-    attachments.map(async (attachment) => ({
-      id: attachment.id,
-      commentId: attachment.commentId,
-      filename: attachment.filename,
-      mimeType: attachment.mimeType,
-      size: attachment.size,
-      url: await getAttachmentDownloadUrl(attachment.objectKey),
-    })),
-  );
+  const attachmentLinks = attachments.map((attachment) => ({
+    id: attachment.id,
+    commentId: attachment.commentId,
+    filename: attachment.filename,
+    mimeType: attachment.mimeType,
+    size: attachment.size,
+    url: `/api/attachments/${attachment.id}`,
+  }));
   const ticketAttachmentLinks = attachmentLinks.filter((link) => link.commentId === null);
   const commentAttachmentLinks = new Map<string, Array<(typeof attachmentLinks)[number]>>();
   for (const link of attachmentLinks) {

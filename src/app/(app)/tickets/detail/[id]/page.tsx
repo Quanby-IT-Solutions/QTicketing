@@ -23,7 +23,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { db } from "@/db";
 import { projects, ticketAttachments, ticketComments, ticketStatusHistory, tickets, userProjects, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
-import { getAttachmentDownloadUrl } from "@/lib/storage";
 import { cn } from "@/lib/utils";
 
 function formatFileSize(bytes: number) {
@@ -95,16 +94,14 @@ export default async function TicketDetailPage({ params }: { params: Promise<{ i
     .innerJoin(users, eq(ticketStatusHistory.changedById, users.id))
     .where(eq(ticketStatusHistory.ticketId, ticket.id))
     .orderBy(asc(ticketStatusHistory.createdAt));
-  const attachmentLinks = await Promise.all(
-    attachments.map(async (attachment) => ({
-      id: attachment.id,
-      commentId: attachment.commentId,
-      filename: attachment.filename,
-      mimeType: attachment.mimeType,
-      size: attachment.size,
-      url: await getAttachmentDownloadUrl(attachment.objectKey),
-    })),
-  );
+  const attachmentLinks = attachments.map((attachment) => ({
+    id: attachment.id,
+    commentId: attachment.commentId,
+    filename: attachment.filename,
+    mimeType: attachment.mimeType,
+    size: attachment.size,
+    url: `/api/attachments/${attachment.id}`,
+  }));
   const ticketAttachmentLinks = attachmentLinks.filter((link) => link.commentId === null);
   const commentAttachmentLinks = new Map<string, Array<(typeof attachmentLinks)[number]>>();
   for (const link of attachmentLinks) {

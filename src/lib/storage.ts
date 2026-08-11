@@ -68,3 +68,12 @@ export async function getAttachmentDownloadUrl(objectKey: string) {
   );
 }
 
+export async function getTicketAttachmentObject(objectKey: string) {
+  return s3.send(
+    new GetObjectCommand({
+      Bucket: env.S3_BUCKET_NAME,
+      Key: objectKey,
+    }),
+  );
+}
+
