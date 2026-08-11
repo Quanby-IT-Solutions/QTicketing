@@ -51,6 +51,7 @@ export async function PATCH(request: Request, context: Context) {
   const statusChanged = data.status !== undefined && data.status !== result.ticket.status;
   const updates: Partial<typeof tickets.$inferInsert> = { ...data, dueDate: data.dueDate === undefined ? undefined : data.dueDate ? new Date(data.dueDate) : null, updatedAt: now };
   if (statusChanged) updates.resolvedAt = data.status === "done" ? now : null;
+  if (statusChanged && (data.status === "ongoing" || data.status === "done")) updates.assigneeId = result.user.id;
   await db.transaction(async (tx) => {
     const [updated] = await tx.update(tickets).set(updates).where(eq(tickets.id, result.ticket.id)).returning();
     if (statusChanged) await tx.insert(ticketStatusHistory).values({ ticketId: result.ticket.id, changedById: result.user.id, fromStatus: result.ticket.status, toStatus: data.status! });

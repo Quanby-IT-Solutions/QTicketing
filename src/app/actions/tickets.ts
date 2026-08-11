@@ -294,6 +294,11 @@ export async function updateTicketAction(formData: FormData) {
     updateValues.assigneeId = parsed.assigneeId || null;
   }
 
+  // The person actively progressing or completing a ticket owns the work.
+  if (statusChanged && (parsed.status === "ongoing" || parsed.status === "done")) {
+    updateValues.assigneeId = user.id;
+  }
+
   await db.transaction(async (tx) => {
     await tx.update(tickets).set(updateValues).where(eq(tickets.id, parsed.ticketId));
 
@@ -345,6 +350,9 @@ export async function updateTicketInlineAction(formData: FormData) {
     updateValues.resolvedAt = parsed.status === "done" ? new Date() : null;
   }
   if (parsed.priority) updateValues.priority = parsed.priority;
+  if (parsed.status && parsed.status !== ticket.status && (parsed.status === "ongoing" || parsed.status === "done")) {
+    updateValues.assigneeId = user.id;
+  }
 
   await db.update(tickets).set(updateValues).where(eq(tickets.id, parsed.ticketId));
 

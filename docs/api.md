@@ -153,7 +153,9 @@ Content-Type: application/json
 { "status": "ongoing", "priority": "high" }
 ```
 
-Before sending `{ "status": "done" }`, display a modal that requires the user to type `CONFIRM` and provides a copy button for that word. Once confirmed, call the PATCH endpoint. Ticketing records the status-history event and sends the completion notification.
+When the authenticated Ticketing user changes status to `ongoing` or `done`, Ticketing automatically assigns that user to the ticket. Refresh the host-project table and details dialog after the PATCH response so the new assignee is shown.
+
+Before sending `{ "status": "done" }`, display a modal that requires the user to type `CONFIRM` and provides a copy button for that word. Once confirmed, call the PATCH endpoint. Ticketing records the status-history event, assigns the authenticated user, and sends the completion notification.
 
 ### Copy-ready implementation prompt
 
@@ -168,7 +170,7 @@ This project code is {CODE}. Hard-code that code in the backend Ticketing client
 
 Create backend proxy endpoints for Ticketing ticket CRUD and comment/reply CRUD. The browser must call only this project's backend, never Ticketing directly and never receive the Bearer key.
 
-Build the UI to match Ticketing: searchable/filterable ticket table; shadcn status and priority Select controls; a shadcn action-menu icon on every row with View, Edit, and Delete; Create ticket modal; ticket detail modal with status history; comments and nested replies; edit/delete actions; and a typed confirmation before setting status to Done. Use Ticketing's status and priority colors.
+Build the UI to match Ticketing: searchable/filterable ticket table; shadcn status and priority Select controls; a shadcn action-menu icon on every row with View, Edit, and Delete; Create ticket modal; ticket detail modal with status history and assignee; comments and nested replies; edit/delete actions; and a typed confirmation before setting status to Done. When a user sets Ongoing or Done, refresh the row and details because Ticketing automatically assigns that authenticated user. Use Ticketing's status and priority colors.
 
 Use the Ticketing API paths documented in docs/api.md. Proxy multipart uploads through this project's backend using the Ticketing attachment endpoints. Do not upload files directly to S3 and do not expose the Ticketing Bearer key.
 ```
