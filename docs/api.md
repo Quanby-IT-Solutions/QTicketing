@@ -51,14 +51,14 @@ SEED_API_KEY=qtk_live_<project-backend-api-key>
 
 Use the project code that matches the Ticketing project record:
 
-| Project system | Ticketing project code | Ticket endpoints begin with |
-| --- | --- | --- |
-| Record Management Information System | `RMIS` | `/api/v1/projects/RMIS` |
-| QLegal | `QLEGAL` | `/api/v1/projects/QLEGAL` |
-| Document Management System | `DMS` | `/api/v1/projects/DMS` |
-| Customer Relationship Information System | `CRIS` | `/api/v1/projects/CRIS` |
-| Human Resource Information System | `HRIS` | `/api/v1/projects/HRIS` |
-| Learning Management System | `LMS` | `/api/v1/projects/LMS` |
+| Project system                       | Ticketing project code | Ticket endpoints begin with |
+| ------------------------------------ | ---------------------- | --------------------------- |
+| Record Management Information System | `RMIS`                 | `/api/v1/projects/RMIS`     |
+| QLegal                               | `QLEGAL`               | `/api/v1/projects/QLEGAL`   |
+| Document Management System           | `DMS`                  | `/api/v1/projects/DMS`      |
+| CIvil Registry Information System    | `CRIS`                 | `/api/v1/projects/CRIS`     |
+| Human Resource Information System    | `HRIS`                 | `/api/v1/projects/HRIS`     |
+| Learning Management System           | `LMS`                  | `/api/v1/projects/LMS`      |
 
 The API key owner must have access to that Ticketing project. Create and activate a project in Ticketing before connecting its backend. The seed script includes the project codes above; run `pnpm db:seed` after updating an existing development database.
 
@@ -114,12 +114,12 @@ The JSON endpoint does not accept attachments. Add files through Ticketing after
 
 All ticket operations use the same user API key and require the key owner to have current access to `{projectCode}`.
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/v1/projects/{projectCode}/tickets?limit=50` | List up to 100 project tickets, newest update first |
-| `GET` | `/api/v1/projects/{projectCode}/tickets/{ticketId}` | Get one ticket |
-| `PATCH` | `/api/v1/projects/{projectCode}/tickets/{ticketId}` | Update editable ticket fields |
-| `DELETE` | `/api/v1/projects/{projectCode}/tickets/{ticketId}` | Delete a ticket; returns `204` |
+| Method   | Endpoint                                            | Purpose                                             |
+| -------- | --------------------------------------------------- | --------------------------------------------------- |
+| `GET`    | `/api/v1/projects/{projectCode}/tickets?limit=50`   | List up to 100 project tickets, newest update first |
+| `GET`    | `/api/v1/projects/{projectCode}/tickets/{ticketId}` | Get one ticket                                      |
+| `PATCH`  | `/api/v1/projects/{projectCode}/tickets/{ticketId}` | Update editable ticket fields                       |
+| `DELETE` | `/api/v1/projects/{projectCode}/tickets/{ticketId}` | Delete a ticket; returns `204`                      |
 
 Example update:
 
@@ -143,11 +143,11 @@ Content-Type: application/json
 
 Comments use the same project and ticket path. A reply is a comment with `parentCommentId`; replies can themselves be replied to, producing a single nested conversation chain.
 
-| Method | Endpoint | Purpose |
-| --- | --- | --- |
-| `GET` | `/api/v1/projects/{projectCode}/tickets/{ticketId}/comments` | List comments in chronological order |
-| `POST` | `/api/v1/projects/{projectCode}/tickets/{ticketId}/comments` | Add a comment or reply |
-| `PATCH` | `/api/v1/projects/{projectCode}/tickets/{ticketId}/comments/{commentId}` | Edit your own comment; admins may edit any comment |
+| Method   | Endpoint                                                                 | Purpose                                                                |
+| -------- | ------------------------------------------------------------------------ | ---------------------------------------------------------------------- |
+| `GET`    | `/api/v1/projects/{projectCode}/tickets/{ticketId}/comments`             | List comments in chronological order                                   |
+| `POST`   | `/api/v1/projects/{projectCode}/tickets/{ticketId}/comments`             | Add a comment or reply                                                 |
+| `PATCH`  | `/api/v1/projects/{projectCode}/tickets/{ticketId}/comments/{commentId}` | Edit your own comment; admins may edit any comment                     |
 | `DELETE` | `/api/v1/projects/{projectCode}/tickets/{ticketId}/comments/{commentId}` | Delete your own comment and its replies; admins may delete any comment |
 
 Create a root comment:
