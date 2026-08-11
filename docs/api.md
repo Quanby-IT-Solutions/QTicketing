@@ -62,6 +62,98 @@ Use the project code that matches the Ticketing project record:
 
 The API key owner must have access to that Ticketing project. Create and activate a project in Ticketing before connecting its backend. The seed script includes the project codes above; run `pnpm db:seed` after updating an existing development database.
 
+## Embed the full Ticketing experience in another project
+
+Use this implementation contract when adding Ticketing to RMIS, QLEGAL, DMS, CRIS, HRIS, LMS, or another project. The goal is to reproduce the Ticketing workspace inside that project so users do not need to open the Ticketing application separately.
+
+### Architecture requirements
+
+1. Create a project web route such as `/ticketing` and add it to that project's authenticated sidebar.
+2. The browser calls only that project's backend routes, for example `/api/v1/ticketing/tickets`.
+3. The project backend calls Ticketing with `TICKETING_API_URL` and `SEED_API_KEY`. Never expose `SEED_API_KEY` or any `qtk_live_...` value in browser code.
+4. Lock the backend integration to the correct project code. RMIS uses `RMIS`; QLegal uses `QLEGAL`; DMS uses `DMS`; CRIS uses `CRIS`; HRIS uses `HRIS`; LMS uses `LMS`.
+5. Recheck the current Ticketing project access on every Ticketing API request. Do not cache authorization decisions.
+
+### Required UI
+
+Build the following user experience in the host project:
+
+- A ticket table with search, status and priority filters, pagination, status/priority dropdowns, a refresh strategy, and an action-menu icon in every row.
+- The action-menu icon must open a shadcn DropdownMenu with **View**, **Edit**, and **Delete** actions. View opens the ticket-details dialog, Edit opens the edit-ticket dialog, and Delete opens a typed confirmation dialog before calling the DELETE endpoint.
+- A **Create ticket** dialog with title, description, priority, category, department, location, due date, and file attachments.
+- A ticket-details dialog showing status, priority, requester, project, assignee, description, attachments, and status history.
+- A conversation section supporting comments, replies to any comment, edit/delete for permitted comments, and comment attachments.
+- A confirmation dialog before changing a ticket to `done`.
+- Ticket status/priority badges that match Ticketing's colors and labels.
+
+### Backend proxy endpoints to implement
+
+The host project should expose these authenticated routes to its own web app, then proxy them to the matching Ticketing paths. Replace `{CODE}` with the project's fixed code, such as `RMIS`.
+
+| Host-project route | Ticketing route |
+| --- | --- |
+| `GET /api/v1/ticketing/tickets` | `GET /api/v1/projects/{CODE}/tickets` |
+| `POST /api/v1/ticketing/tickets` | `POST /api/v1/projects/{CODE}/tickets` |
+| `GET/PATCH/DELETE /api/v1/ticketing/tickets/:ticketId` | `GET/PATCH/DELETE /api/v1/projects/{CODE}/tickets/:ticketId` |
+| `GET/POST /api/v1/ticketing/tickets/:ticketId/comments` | `GET/POST /api/v1/projects/{CODE}/tickets/:ticketId/comments` |
+| `PATCH/DELETE /api/v1/ticketing/tickets/:ticketId/comments/:commentId` | `PATCH/DELETE /api/v1/projects/{CODE}/tickets/:ticketId/comments/:commentId` |
+
+Use `parentCommentId` in the comment `POST` body to create a reply. A `PATCH` ticket request can update `title`, `description`, `status`, `priority`, `category`, `department`, `location`, and `dueDate`.
+
+### Authenticated file uploads
+
+Authenticated Ticketing users can upload files from another project's Ticketing UI. The host backend must proxy the multipart request with the authenticated user's Ticketing Bearer key; the browser must never receive S3 credentials or upload directly to Ticketing S3.
+
+| Purpose | Method and Ticketing endpoint |
+| --- | --- |
+| Add a ticket attachment | `POST /api/v1/projects/{CODE}/tickets/{ticketId}/attachments` |
+| Add an attachment to the user's own comment/reply | `POST /api/v1/projects/{CODE}/tickets/{ticketId}/comments/{commentId}/attachments` |
+
+Send `multipart/form-data` with a single `file` field. Files must be larger than zero and at most 10 MB. Ticket uploads require project access; comment uploads additionally require the caller to own the comment unless the caller is an administrator.
+
+```bash
+curl --request POST \
+  --url "https://ticketing.quanbyit.com/api/v1/projects/RMIS/tickets/{ticketId}/attachments" \
+  --header "Authorization: Bearer $TICKETING_USER_API_KEY" \
+  --form "file=@./supporting-document.pdf"
+```
+
+Do not set a manual `Content-Type` header when sending `FormData`; the HTTP client must set the multipart boundary.
+
+### Table status and priority behavior
+
+To match Ticketing, render `status` and `priority` as shadcn Select controls in the host-project ticket table. Updating either value calls:
+
+```http
+PATCH /api/v1/projects/{CODE}/tickets/{ticketId}
+Authorization: Bearer qtk_live_<user-api-key>
+Content-Type: application/json
+```
+
+```json
+{ "status": "ongoing", "priority": "high" }
+```
+
+Before sending `{ "status": "done" }`, display a modal that requires the user to type `CONFIRM` and provides a copy button for that word. Once confirmed, call the PATCH endpoint. Ticketing records the status-history event and sends the completion notification.
+
+### Copy-ready implementation prompt
+
+```text
+Add a Ticketing workspace to this project at /ticketing and include it in the authenticated app sidebar.
+
+Use this Ticketing configuration only from the backend:
+TICKETING_API_URL=<Ticketing host>
+SEED_API_KEY=<qtk_live API key>
+
+This project code is {CODE}. Hard-code that code in the backend Ticketing client; never accept it from the browser.
+
+Create backend proxy endpoints for Ticketing ticket CRUD and comment/reply CRUD. The browser must call only this project's backend, never Ticketing directly and never receive the Bearer key.
+
+Build the UI to match Ticketing: searchable/filterable ticket table; shadcn status and priority Select controls; a shadcn action-menu icon on every row with View, Edit, and Delete; Create ticket modal; ticket detail modal with status history; comments and nested replies; edit/delete actions; and a typed confirmation before setting status to Done. Use Ticketing's status and priority colors.
+
+Use the Ticketing API paths documented in docs/api.md. Proxy multipart uploads through this project's backend using the Ticketing attachment endpoints. Do not upload files directly to S3 and do not expose the Ticketing Bearer key.
+```
+
 ## Create a project ticket
 
 ```http
