@@ -1,6 +1,7 @@
 "use client";
 
-import { useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Inbox, Search, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -94,6 +95,8 @@ export function TicketsTable({
   showProject?: boolean;
   pageSize?: number;
 }) {
+  const router = useRouter();
+  const versionRef = useRef<string | null>(null);
   const filterId = useId();
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState<"all" | TicketStatus>("all");
@@ -102,6 +105,33 @@ export function TicketsTable({
   const normalizedQuery = query.trim().toLocaleLowerCase();
   const safePageSize = Math.max(1, Math.floor(pageSize));
   const hasFilters = normalizedQuery.length > 0 || status !== "all" || priority !== "all";
+
+  useEffect(() => {
+    let cancelled = false;
+    const checkForChanges = async () => {
+      if (document.visibilityState !== "visible") return;
+      try {
+        const response = await fetch("/api/v1/tickets/version", { cache: "no-store" });
+        if (!response.ok || cancelled) return;
+        const payload = await response.json() as { data?: { version?: string } };
+        const version = payload.data?.version;
+        if (!version) return;
+        if (versionRef.current !== null && versionRef.current !== version) router.refresh();
+        versionRef.current = version;
+      } catch {
+        // A failed background check must not affect the ticket table.
+      }
+    };
+    void checkForChanges();
+    const interval = window.setInterval(() => void checkForChanges(), 10_000);
+    const handleVisibilityChange = () => void checkForChanges();
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [router]);
 
   const filteredRows = useMemo(
     () =>

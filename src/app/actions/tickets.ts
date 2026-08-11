@@ -18,6 +18,7 @@ import {
 } from "@/lib/validation";
 import { collectCommentSubtree } from "@/lib/comment-tree";
 import { createTicket } from "@/lib/services/ticket-creation";
+import { notifyTicketDone } from "@/lib/ticket-notifications";
 import { attachmentSizeErrorMessage, deleteTicketAttachments, getAttachmentDownloadUrl, maxAttachmentBytes, uploadTicketAttachment } from "@/lib/storage";
 
 type CurrentUser = Awaited<ReturnType<typeof requireUser>>;
@@ -308,6 +309,11 @@ export async function updateTicketAction(formData: FormData) {
     }
   });
 
+  if (statusChanged && parsed.status === "done") {
+    const [requester] = await db.select({ email: users.email }).from(users).where(eq(users.id, ticket.requesterId)).limit(1);
+    if (requester) await notifyTicketDone({ recipient: requester.email, ticketId: ticket.id, ticketNumber: ticket.ticketNumber, title: ticket.title });
+  }
+
   await addAttachments(parsed.ticketId, user.id, formData);
   await revalidateTicketPaths({
     ticketId: parsed.ticketId,
@@ -351,6 +357,11 @@ export async function updateTicketInlineAction(formData: FormData) {
       fromStatus: ticket.status,
       toStatus: parsed.status,
     });
+  }
+
+  if (parsed.status === "done" && ticket.status !== "done") {
+    const [requester] = await db.select({ email: users.email }).from(users).where(eq(users.id, ticket.requesterId)).limit(1);
+    if (requester) await notifyTicketDone({ recipient: requester.email, ticketId: ticket.id, ticketNumber: ticket.ticketNumber, title: ticket.title });
   }
 
   revalidatePath("/tickets");

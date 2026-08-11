@@ -20,6 +20,26 @@ Authorization: Bearer qtk_live_<random-secret>
 
 API keys act as their owning Ticketing user. Revoked or expired keys, disabled users, unapproved users, and users without access to the requested project are rejected. Project permissions are checked from the database on every request.
 
+### Development seed bearer (no expiry)
+
+For local development or a controlled non-production environment, `scripts/seed.ts` can create a lifetime API key for the seeded admin. Add a generated `qtk_live_...` value to the Ticketing environment before running the seed:
+
+```env
+SEED_API_KEY=qtk_live_<43-url-safe-random-characters>
+```
+
+```bash
+pnpm db:seed
+```
+
+The key is stored only as a hash, has no expiry, and is created idempotently. Use the same `SEED_API_KEY` value in requests:
+
+```http
+Authorization: Bearer qtk_live_<your-seed-api-key>
+```
+
+Do not use a permanent seeded key in production. For production integrations, create a scoped user key from **Settings → API keys** and rotate it regularly.
+
 ## Create a project ticket
 
 ```http
@@ -96,6 +116,36 @@ Content-Type: application/json
 ```
 
 `PATCH` accepts any combination of `title`, `description`, `status` (`pending`, `ongoing`, `done`), `priority`, `category`, `department`, `location`, and `dueDate`. Ticket status changes are recorded in the status history. It does not accept a different requester, project, or assignee.
+
+## Comments and replies
+
+Comments use the same project and ticket path. A reply is a comment with `parentCommentId`; replies can themselves be replied to, producing a single nested conversation chain.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| `GET` | `/api/v1/projects/{projectCode}/tickets/{ticketId}/comments` | List comments in chronological order |
+| `POST` | `/api/v1/projects/{projectCode}/tickets/{ticketId}/comments` | Add a comment or reply |
+| `PATCH` | `/api/v1/projects/{projectCode}/tickets/{ticketId}/comments/{commentId}` | Edit your own comment; admins may edit any comment |
+| `DELETE` | `/api/v1/projects/{projectCode}/tickets/{ticketId}/comments/{commentId}` | Delete your own comment and its replies; admins may delete any comment |
+
+Create a root comment:
+
+```json
+{
+  "body": "We have applied the requested fix. Please verify it."
+}
+```
+
+Reply to an existing comment:
+
+```json
+{
+  "body": "Confirmed, thank you.",
+  "parentCommentId": "9a73e5fa-0ee0-4db1-a449-4608f1240c9c"
+}
+```
+
+Comment endpoints accept JSON only. Attachment upload is not yet available through the API.
 
 ## Automatic ticket creation from any project
 

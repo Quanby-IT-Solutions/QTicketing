@@ -2,9 +2,10 @@ import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { projects, ticketStatusHistory, tickets } from "@/db/schema";
+import { projects, ticketStatusHistory, tickets, users } from "@/db/schema";
 import { authenticateApiRequest } from "@/lib/api-auth";
 import { updateApiTicketSchema } from "@/lib/api-ticket-validation";
+import { notifyTicketDone } from "@/lib/ticket-notifications";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,6 +56,10 @@ export async function PATCH(request: Request, context: Context) {
     if (statusChanged) await tx.insert(ticketStatusHistory).values({ ticketId: result.ticket.id, changedById: result.user.id, fromStatus: result.ticket.status, toStatus: data.status! });
     result.ticket = updated;
   });
+  if (statusChanged && data.status === "done") {
+    const [requester] = await db.select({ email: users.email }).from(users).where(eq(users.id, result.ticket.requesterId)).limit(1);
+    if (requester) await notifyTicketDone({ recipient: requester.email, ticketId: result.ticket.id, ticketNumber: result.ticket.ticketNumber, title: result.ticket.title });
+  }
   revalidatePath("/tickets"); revalidatePath("/dashboard"); revalidatePath(`/tickets/${result.project.name}`); revalidatePath(`/tickets/detail/${result.ticket.id}`);
   return response({ data: { ticket: serialize(result.ticket) } }, 200);
 }

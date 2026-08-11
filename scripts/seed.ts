@@ -1,8 +1,9 @@
 import "dotenv/config";
 
+import { createHash } from "node:crypto";
 import { eq } from "drizzle-orm";
 import { db } from "../src/db";
-import { projects, userProjects, users } from "../src/db/schema";
+import { apiKeys, projects, userProjects, users } from "../src/db/schema";
 import { hashPassword } from "../src/lib/password";
 
 const projectSeeds = [
@@ -45,7 +46,7 @@ async function seedAdmin() {
       .insert(userProjects)
       .values(projectRows.map((project) => ({ userId: existing.id, projectId: project.id })))
       .onConflictDoNothing();
-    return;
+    return existing.id;
   }
 
   const [admin] = await db
@@ -64,11 +65,39 @@ async function seedAdmin() {
   await db.insert(userProjects).values(projectRows.map((project) => ({ userId: admin.id, projectId: project.id })));
 
   console.log(`Admin user created: ${email}`);
+  return admin.id;
+}
+
+async function seedBearer(userId: string) {
+  const token = process.env.SEED_API_KEY?.trim();
+  if (!token) {
+    console.log("No seed bearer created. Set SEED_API_KEY to create one.");
+    return;
+  }
+  if (!/^qtk_live_[A-Za-z0-9_-]{43}$/.test(token)) {
+    throw new Error("SEED_API_KEY must be a valid qtk_live_ API key.");
+  }
+
+  const tokenHash = createHash("sha256").update(token, "utf8").digest("hex");
+  await db
+    .insert(apiKeys)
+    .values({
+      userId,
+      name: "Seed bearer (no expiry)",
+      prefix: token.slice(0, "qtk_live_".length + 8),
+      tokenHash,
+      expiresAt: null,
+      revokedAt: null,
+    })
+    .onConflictDoNothing({ target: apiKeys.tokenHash });
+
+  console.log("Seed bearer is ready with no expiry. Use the SEED_API_KEY environment value as its Bearer token.");
 }
 
 async function main() {
   await seedProjects();
-  await seedAdmin();
+  const adminId = await seedAdmin();
+  await seedBearer(adminId);
 }
 
 void main().catch((error: unknown) => {

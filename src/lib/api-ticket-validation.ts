@@ -46,3 +46,14 @@ export const updateApiTicketSchema = z
   })
   .strict()
   .refine((value) => Object.keys(value).length > 0, "Send at least one editable ticket field.");
+
+export const createApiCommentSchema = z
+  .object({
+    body: z.string().trim().min(1).max(3000),
+    parentCommentId: z.string().uuid().optional(),
+  })
+  .strict();
+
+export const updateApiCommentSchema = z
+  .object({ body: z.string().trim().min(1).max(3000) })
+  .strict();
