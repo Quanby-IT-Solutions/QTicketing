@@ -14,6 +14,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { ProjectAccessRequestForm } from "@/components/project-access-request-form";
+import { ChangePasswordDialog } from "@/components/change-password-dialog";
 import {
   ApiKeyManager,
   type ApiKeyListItem,
@@ -214,6 +215,14 @@ export default async function SettingsPage() {
                 administrator.
               </p>
             </div>
+          </div>
+          <Separator />
+          <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-medium">Password</p>
+              <p className="mt-1 text-xs text-muted-foreground">Use a unique password with at least 8 characters.</p>
+            </div>
+            <ChangePasswordDialog />
           </div>
         </CardContent>
       </Card>
