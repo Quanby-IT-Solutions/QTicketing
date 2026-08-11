@@ -40,6 +40,28 @@ Authorization: Bearer qtk_live_<your-seed-api-key>
 
 Do not use a permanent seeded key in production. For production integrations, create a scoped user key from **Settings → API keys** and rotate it regularly.
 
+## Per-project backend setup
+
+Every project backend uses the same Ticketing API host and a `qtk_live_...` user API key. Set these values in the backend environment only; do not expose them to the project web application.
+
+```env
+TICKETING_API_URL=https://ticketing.quanbyit.com
+SEED_API_KEY=qtk_live_<project-backend-api-key>
+```
+
+Use the project code that matches the Ticketing project record:
+
+| Project system | Ticketing project code | Ticket endpoints begin with |
+| --- | --- | --- |
+| Record Management Information System | `RMIS` | `/api/v1/projects/RMIS` |
+| QLegal | `QLEGAL` | `/api/v1/projects/QLEGAL` |
+| Document Management System | `DMS` | `/api/v1/projects/DMS` |
+| Customer Relationship Information System | `CRIS` | `/api/v1/projects/CRIS` |
+| Human Resource Information System | `HRIS` | `/api/v1/projects/HRIS` |
+| Learning Management System | `LMS` | `/api/v1/projects/LMS` |
+
+The API key owner must have access to that Ticketing project. Create and activate a project in Ticketing before connecting its backend. The seed script includes the project codes above; run `pnpm db:seed` after updating an existing development database.
+
 ## Create a project ticket
 
 ```http

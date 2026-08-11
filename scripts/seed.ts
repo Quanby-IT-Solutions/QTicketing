@@ -12,6 +12,7 @@ const projectSeeds = [
   { name: "DMS", title: "Document Management System" },
   { name: "RMIS", title: "Record Management Information System" },
   { name: "LMS", title: "Learning Management System" },
+  { name: "CRIS", title: "Customer Relationship Information System" },
 ];
 
 async function seedProjects() {

@@ -1,6 +1,6 @@
 # Project-to-Ticketing integration
 
-Use this guide to connect any Quanby project—RMIS, QLEGAL, DMS, LMS, HRIS, or a future project—to Ticketing. Each project keeps its own database and calls Ticketing from its backend to synchronize users and create tickets.
+Use this guide to connect any Quanby project—RMIS, QLEGAL, DMS, CRIS, LMS, HRIS, or a future project—to Ticketing. Each project keeps its own database and calls Ticketing from its backend to synchronize users and create tickets.
 
 The project backend is the only caller of these integration endpoints. Do not expose either secret or call these endpoints from browser code.
 
