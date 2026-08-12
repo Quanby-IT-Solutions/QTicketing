@@ -6,7 +6,7 @@ import { Check, CheckCircle2, Clock3, FolderPlus, ShieldCheck, ShieldPlus, Users
 import { reviewProjectAccessAction } from "@/app/actions/project-access";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateUserDialog } from "@/components/create-user-dialog";
 import {
@@ -21,6 +21,7 @@ import { UserAccessActions } from "@/components/user-access-actions";
 import { db } from "@/db";
 import { projectAccessRequests, projects, userProjects, users } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
+import { cn } from "@/lib/utils";
 
 function initials(name: string) {
   return name
@@ -269,13 +270,17 @@ export default async function UsersPage({ searchParams }: { searchParams: Promis
                 : `Showing ${pageStart + 1}-${Math.min(pageStart + pageSize, manageableUserRows.length)} of ${manageableUserRows.length} users`}
             </p>
             <div className="flex items-center gap-2">
-              <Button disabled={currentPage === 1} render={<Link href={`/admin/users?page=${currentPage - 1}`} />} size="sm" variant="outline">
-                Previous
-              </Button>
+              {currentPage === 1 ? (
+                <Button disabled size="sm" variant="outline">Previous</Button>
+              ) : (
+                <Link className={cn(buttonVariants({ size: "sm", variant: "outline" }))} href={`/admin/users?page=${currentPage - 1}`}>Previous</Link>
+              )}
               <span className="text-xs text-muted-foreground">Page {currentPage} of {pageCount}</span>
-              <Button disabled={currentPage === pageCount} render={<Link href={`/admin/users?page=${currentPage + 1}`} />} size="sm" variant="outline">
-                Next
-              </Button>
+              {currentPage === pageCount ? (
+                <Button disabled size="sm" variant="outline">Next</Button>
+              ) : (
+                <Link className={cn(buttonVariants({ size: "sm", variant: "outline" }))} href={`/admin/users?page=${currentPage + 1}`}>Next</Link>
+              )}
             </div>
           </div>
         </Card>
