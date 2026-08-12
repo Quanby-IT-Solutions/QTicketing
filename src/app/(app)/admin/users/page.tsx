@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { asc, desc, eq } from "drizzle-orm";
 import { Check, CheckCircle2, Clock3, FolderPlus, ShieldCheck, ShieldPlus, UsersRound, X } from "lucide-react";
@@ -40,9 +41,10 @@ export const metadata: Metadata = {
   title: "Users",
 };
 
-export default async function UsersPage() {
+export default async function UsersPage({ searchParams }: { searchParams: Promise<{ page?: string }> }) {
   const currentUser = await requireUser();
   if (currentUser.role !== "admin") redirect("/tickets");
+  const { page: pageParam } = await searchParams;
 
   const [userRows, projectRows, accessRows, accessRequestRows] = await Promise.all([
     db.select().from(users).orderBy(asc(users.status), asc(users.name)),
@@ -73,11 +75,15 @@ export default async function UsersPage() {
     accessByUser.set(row.userId, set);
   }
 
-  const manageableUserRows = userRows.filter(
-    (user) => user.email !== "admin@quanbyit.com" && user.name !== "System Admin",
-  );
+  const manageableUserRows = userRows;
   const pendingCount = manageableUserRows.filter((user) => user.status === "pending").length;
   const activeCount = manageableUserRows.filter((user) => user.active && user.status === "approved").length;
+  const pageSize = 10;
+  const pageCount = Math.max(1, Math.ceil(manageableUserRows.length / pageSize));
+  const requestedPage = Number(pageParam);
+  const currentPage = Number.isSafeInteger(requestedPage) ? Math.min(Math.max(requestedPage, 1), pageCount) : 1;
+  const pageStart = (currentPage - 1) * pageSize;
+  const pagedUserRows = manageableUserRows.slice(pageStart, pageStart + pageSize);
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6">
@@ -190,7 +196,7 @@ export default async function UsersPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {manageableUserRows.map((user) => {
+              {pagedUserRows.map((user) => {
                 const userAccess = accessByUser.get(user.id) ?? new Set<string>();
                 const projectCodes = projectRows
                   .filter((project) => userAccess.has(project.id))
@@ -256,6 +262,22 @@ export default async function UsersPage() {
               })}
             </TableBody>
           </Table>
+          <div className="flex flex-col gap-3 border-t px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-muted-foreground">
+              {manageableUserRows.length === 0
+                ? "No accounts to show"
+                : `Showing ${pageStart + 1}-${Math.min(pageStart + pageSize, manageableUserRows.length)} of ${manageableUserRows.length} users`}
+            </p>
+            <div className="flex items-center gap-2">
+              <Button disabled={currentPage === 1} render={<Link href={`/admin/users?page=${currentPage - 1}`} />} size="sm" variant="outline">
+                Previous
+              </Button>
+              <span className="text-xs text-muted-foreground">Page {currentPage} of {pageCount}</span>
+              <Button disabled={currentPage === pageCount} render={<Link href={`/admin/users?page=${currentPage + 1}`} />} size="sm" variant="outline">
+                Next
+              </Button>
+            </div>
+          </div>
         </Card>
       </section>
     </div>

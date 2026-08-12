@@ -10,7 +10,7 @@ Configure these two secrets once in the Ticketing deployment. They work for ever
 
 ```env
 TICKETING_PROVISIONING_TOKEN=<random-32-or-more-character-secret>
-TICKETING_TICKET_API_KEY=<another-random-32-or-more-character-secret>
+TICKETING_API_KEY=<another-random-32-or-more-character-secret>
 ```
 
 Each connected project backend uses the same values under the same names:
@@ -18,7 +18,7 @@ Each connected project backend uses the same values under the same names:
 ```env
 TICKETING_API_URL=https://ticketing.quanbyit.com
 TICKETING_PROVISIONING_TOKEN=<same-value-as-Ticketing-TICKETING_PROVISIONING_TOKEN>
-TICKETING_TICKET_API_KEY=<same-value-as-Ticketing-TICKETING_TICKET_API_KEY>
+TICKETING_API_KEY=<same-value-as-Ticketing-TICKETING_API_KEY>
 ```
 
 When you add QLEGAL, DMS, LMS, or another project, create and activate that project in Ticketing. No additional Ticketing environment variable or redeploy is required.
@@ -30,7 +30,7 @@ Replace `{PROJECT_CODE}` with the Ticketing project code, for example `RMIS`, `Q
 | Purpose | Endpoint | Credential |
 | --- | --- | --- |
 | Sync a registered user | `POST /api/v1/integrations/{PROJECT_CODE}/users` | `TICKETING_PROVISIONING_TOKEN` |
-| Create a ticket as the synced user | `POST /api/v1/integrations/{PROJECT_CODE}/tickets` | `TICKETING_TICKET_API_KEY` |
+| Create a ticket as the synced user | `POST /api/v1/integrations/{PROJECT_CODE}/tickets` | `TICKETING_API_KEY` |
 
 The project comes from the URL, not the JSON body. A call to `/api/v1/integrations/QLEGAL/tickets` can create only QLEGAL tickets.
 
@@ -99,7 +99,7 @@ The project backend identifies the signed-in local user from its server-side ses
 
 ```http
 POST /api/v1/integrations/QLEGAL/tickets
-Authorization: Bearer <TICKETING_TICKET_API_KEY>
+Authorization: Bearer <TICKETING_API_KEY>
 Content-Type: application/json
 ```
 
@@ -136,7 +136,7 @@ export async function createTicketInTicketing(
     {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${process.env.TICKETING_TICKET_API_KEY}`,
+        Authorization: `Bearer ${process.env.TICKETING_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
