@@ -34,7 +34,7 @@ pnpm db:seed
 
 The key is stored only as a hash, has no expiry, and is created idempotently. Use the same `SEED_API_KEY` value in requests:
 
-```http
+````http
 Authorization: Bearer qtk_live_<your-seed-api-key>
 ```
 
@@ -47,7 +47,7 @@ Every project backend uses the same Ticketing API host and a `qtk_live_...` user
 ```env
 TICKETING_API_URL=https://ticketing.quanbyit.com
 SEED_API_KEY=qtk_live_<project-backend-api-key>
-```
+````
 
 Use the project code that matches the Ticketing project record:
 
@@ -74,6 +74,42 @@ Use this implementation contract when adding Ticketing to RMIS, QLEGAL, DMS, CRI
 4. Lock the backend integration to the correct project code. RMIS uses `RMIS`; QLegal uses `QLEGAL`; DMS uses `DMS`; CRIS uses `CRIS`; HRIS uses `HRIS`; LMS uses `LMS`.
 5. Recheck the current Ticketing project access on every Ticketing API request. Do not cache authorization decisions.
 
+### Required design references
+
+Reproduce these three reference screens as closely as possible in the host project. Use the host project's shadcn components, spacing scale, typography, responsive breakpoints, and icon library, but preserve the information hierarchy, field order, and interaction design shown below.
+
+#### Ticket table
+
+![Ticket table design](<Table UI.jpeg>)
+
+- Header: project-code pill, ticket count, project title/description, and a primary **New {CODE} ticket** button.
+- Table toolbar: search field, status filter, priority filter, and result count.
+- Columns: ticket number/title, requester, category, status, priority, created date, and trailing action-menu icon.
+- Status and priority are colored shadcn Select controls. The menu must open below the trigger and never cover it.
+- The trailing ellipsis menu contains **View**, **Edit**, and destructive **Delete**.
+- Footer includes result count and pagination.
+
+#### Create-ticket dialog
+
+![Create ticket design](Create-ticket.jpeg)
+
+- Large scrollable dialog with a fixed header and fixed footer.
+- Header identifies the project and its human-readable title.
+- Fields in order: title, description, locked project display, priority Select, category, due-date picker, department, location, and attachments.
+- Use a two-column layout for project/priority, category/due date, and department/location on desktop; stack on mobile.
+- Attachments are optional; show selected files and enforce the 10 MB-per-file limit.
+- Footer has secondary **Cancel** and primary **Create ticket** actions.
+
+#### Ticket-details dialog
+
+![Ticket details design](view-ticket.jpeg)
+
+- Full-width scrollable dialog with ticket number, created date, title/requester, and status/priority badges in the header.
+- Main content uses a responsive two-column layout: description, attachments, and conversation on the left; ticket details and scrollable status history on the right.
+- Attachment rows show icon, filename, size, and View/Download action; fetch files through the host backend proxy, never via S3 URLs.
+- Conversation supports Add comment, nested replies, comment/reply attachments, and permitted edit/delete actions.
+- Detail values include project, category, requester, assignee, department, location, and due date. Refresh after status changes so the automatic assignee is visible.
+
 ### Required UI
 
 Build the following user experience in the host project:
@@ -90,16 +126,16 @@ Build the following user experience in the host project:
 
 The host project should expose these authenticated routes to its own web app, then proxy them to the matching Ticketing paths. Replace `{CODE}` with the project's fixed code, such as `RMIS`.
 
-| Host-project route | Ticketing route |
-| --- | --- |
-| `GET /api/v1/ticketing/tickets` | `GET /api/v1/projects/{CODE}/tickets` |
-| `POST /api/v1/ticketing/tickets` | `POST /api/v1/projects/{CODE}/tickets` |
-| `GET/PATCH/DELETE /api/v1/ticketing/tickets/:ticketId` | `GET/PATCH/DELETE /api/v1/projects/{CODE}/tickets/:ticketId` |
-| `GET/POST /api/v1/ticketing/tickets/:ticketId/comments` | `GET/POST /api/v1/projects/{CODE}/tickets/:ticketId/comments` |
-| `PATCH/DELETE /api/v1/ticketing/tickets/:ticketId/comments/:commentId` | `PATCH/DELETE /api/v1/projects/{CODE}/tickets/:ticketId/comments/:commentId` |
-| `GET /api/v1/ticketing/tickets/:ticketId/attachments` | `GET /api/v1/projects/{CODE}/tickets/:ticketId/attachments` |
-| `GET /api/v1/ticketing/tickets/:ticketId/attachments/:attachmentId` | `GET /api/v1/projects/{CODE}/tickets/:ticketId/attachments/:attachmentId` |
-| `GET /api/v1/ticketing/tickets/:ticketId/comments/:commentId/attachments` | `GET /api/v1/projects/{CODE}/tickets/:ticketId/comments/:commentId/attachments` |
+| Host-project route                                                                      | Ticketing route                                                                               |
+| --------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| `GET /api/v1/ticketing/tickets`                                                         | `GET /api/v1/projects/{CODE}/tickets`                                                         |
+| `POST /api/v1/ticketing/tickets`                                                        | `POST /api/v1/projects/{CODE}/tickets`                                                        |
+| `GET/PATCH/DELETE /api/v1/ticketing/tickets/:ticketId`                                  | `GET/PATCH/DELETE /api/v1/projects/{CODE}/tickets/:ticketId`                                  |
+| `GET/POST /api/v1/ticketing/tickets/:ticketId/comments`                                 | `GET/POST /api/v1/projects/{CODE}/tickets/:ticketId/comments`                                 |
+| `PATCH/DELETE /api/v1/ticketing/tickets/:ticketId/comments/:commentId`                  | `PATCH/DELETE /api/v1/projects/{CODE}/tickets/:ticketId/comments/:commentId`                  |
+| `GET /api/v1/ticketing/tickets/:ticketId/attachments`                                   | `GET /api/v1/projects/{CODE}/tickets/:ticketId/attachments`                                   |
+| `GET /api/v1/ticketing/tickets/:ticketId/attachments/:attachmentId`                     | `GET /api/v1/projects/{CODE}/tickets/:ticketId/attachments/:attachmentId`                     |
+| `GET /api/v1/ticketing/tickets/:ticketId/comments/:commentId/attachments`               | `GET /api/v1/projects/{CODE}/tickets/:ticketId/comments/:commentId/attachments`               |
 | `GET /api/v1/ticketing/tickets/:ticketId/comments/:commentId/attachments/:attachmentId` | `GET /api/v1/projects/{CODE}/tickets/:ticketId/comments/:commentId/attachments/:attachmentId` |
 
 Use `parentCommentId` in the comment `POST` body to create a reply. A `PATCH` ticket request can update `title`, `description`, `status`, `priority`, `category`, `department`, `location`, and `dueDate`.
@@ -108,9 +144,9 @@ Use `parentCommentId` in the comment `POST` body to create a reply. A `PATCH` ti
 
 Authenticated Ticketing users can upload files from another project's Ticketing UI. The host backend must proxy the multipart request with the authenticated user's Ticketing Bearer key; the browser must never receive S3 credentials or upload directly to Ticketing S3.
 
-| Purpose | Method and Ticketing endpoint |
-| --- | --- |
-| Add a ticket attachment | `POST /api/v1/projects/{CODE}/tickets/{ticketId}/attachments` |
+| Purpose                                           | Method and Ticketing endpoint                                                      |
+| ------------------------------------------------- | ---------------------------------------------------------------------------------- |
+| Add a ticket attachment                           | `POST /api/v1/projects/{CODE}/tickets/{ticketId}/attachments`                      |
 | Add an attachment to the user's own comment/reply | `POST /api/v1/projects/{CODE}/tickets/{ticketId}/comments/{commentId}/attachments` |
 
 Send `multipart/form-data` with a single `file` field. Files must be larger than zero and at most 10 MB. Ticket uploads require project access; comment uploads additionally require the caller to own the comment unless the caller is an administrator.
@@ -128,12 +164,12 @@ Do not set a manual `Content-Type` header when sending `FormData`; the HTTP clie
 
 The host-project ticket-details dialog and comment thread can fetch attachment metadata and files through these authenticated Ticketing API routes. Proxy them through the host backend:
 
-| Method | Ticketing endpoint | Result |
-| --- | --- | --- |
-| `GET` | `/api/v1/projects/{CODE}/tickets/{ticketId}/attachments` | List ticket-level attachments |
-| `GET` | `/api/v1/projects/{CODE}/tickets/{ticketId}/attachments/{attachmentId}` | Stream or download one ticket attachment |
-| `GET` | `/api/v1/projects/{CODE}/tickets/{ticketId}/comments/{commentId}/attachments` | List attachments on a comment or reply |
-| `GET` | `/api/v1/projects/{CODE}/tickets/{ticketId}/comments/{commentId}/attachments/{attachmentId}` | Stream or download one comment/reply attachment |
+| Method | Ticketing endpoint                                                                           | Result                                          |
+| ------ | -------------------------------------------------------------------------------------------- | ----------------------------------------------- |
+| `GET`  | `/api/v1/projects/{CODE}/tickets/{ticketId}/attachments`                                     | List ticket-level attachments                   |
+| `GET`  | `/api/v1/projects/{CODE}/tickets/{ticketId}/attachments/{attachmentId}`                      | Stream or download one ticket attachment        |
+| `GET`  | `/api/v1/projects/{CODE}/tickets/{ticketId}/comments/{commentId}/attachments`                | List attachments on a comment or reply          |
+| `GET`  | `/api/v1/projects/{CODE}/tickets/{ticketId}/comments/{commentId}/attachments/{attachmentId}` | Stream or download one comment/reply attachment |
 
 The browser should open the host project's authenticated download route, not an S3 URL. The host backend validates its session, calls Ticketing with the Bearer credential, and streams the response with the original filename and MIME type. Never return presigned S3 URLs, AWS credentials, or bucket paths to the browser.
 
@@ -171,6 +207,8 @@ This project code is {CODE}. Hard-code that code in the backend Ticketing client
 Create backend proxy endpoints for Ticketing ticket CRUD and comment/reply CRUD. The browser must call only this project's backend, never Ticketing directly and never receive the Bearer key.
 
 Build the UI to match Ticketing: searchable/filterable ticket table; shadcn status and priority Select controls; a shadcn action-menu icon on every row with View, Edit, and Delete; Create ticket modal; ticket detail modal with status history and assignee; comments and nested replies; edit/delete actions; and a typed confirmation before setting status to Done. When a user sets Ongoing or Done, refresh the row and details because Ticketing automatically assigns that authenticated user. Use Ticketing's status and priority colors.
+
+Use the visual references in `docs/Table UI.jpeg`, `docs/Create-ticket.jpeg`, and `docs/view-ticket.jpeg` as the required design specification. Match their information hierarchy, dialog layout, controls, cards, attachment rows, and status-history presentation.
 
 Use the Ticketing API paths documented in docs/api.md. Proxy multipart uploads through this project's backend using the Ticketing attachment endpoints. Do not upload files directly to S3 and do not expose the Ticketing Bearer key.
 ```
