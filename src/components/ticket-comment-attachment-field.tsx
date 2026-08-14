@@ -50,7 +50,7 @@ export function TicketCommentAttachmentField({
         <span className="min-w-0">
           <span className="block text-sm font-medium">Attach files</span>
           <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
-            Images and documents up to 10 MB each.
+            Images and documents.
           </span>
         </span>
       </label>

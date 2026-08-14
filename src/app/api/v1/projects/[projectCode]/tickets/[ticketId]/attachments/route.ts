@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { projects, ticketAttachments, tickets } from "@/db/schema";
 import { authenticateApiRequest } from "@/lib/api-auth";
-import { attachmentSizeErrorMessage, maxAttachmentBytes, uploadTicketAttachment } from "@/lib/storage";
+import { uploadTicketAttachment } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -23,7 +23,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ pro
   let formData: FormData;
   try { formData = await request.formData(); } catch { return response({ error: { code: "INVALID_MULTIPART", message: "The upload form is invalid." } }, 400); }
   const file = formData.get("file");
-  if (!(file instanceof File) || file.size === 0 || file.size > maxAttachmentBytes) return response({ error: { code: "VALIDATION_ERROR", message: attachmentSizeErrorMessage } }, 400);
+  if (!(file instanceof File)) return response({ error: { code: "VALIDATION_ERROR", message: "A file is required." } }, 400);
   try {
     const uploaded = await uploadTicketAttachment(ticket.id, file);
     const [attachment] = await db.insert(ticketAttachments).values({ ticketId: ticket.id, uploaderId: user.id, ...uploaded }).returning({ id: ticketAttachments.id, filename: ticketAttachments.filename, mimeType: ticketAttachments.mimeType, size: ticketAttachments.size, createdAt: ticketAttachments.createdAt });

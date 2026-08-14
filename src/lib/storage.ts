@@ -13,14 +13,7 @@ const s3 = new S3Client({
   },
 });
 
-export const maxAttachmentBytes = 10 * 1024 * 1024;
-export const attachmentSizeErrorMessage = "Attachments must be between 1 byte and 10 MB.";
-
 export async function uploadTicketAttachment(ticketId: string, file: File) {
-  if (file.size <= 0 || file.size > maxAttachmentBytes) {
-    throw new Error(attachmentSizeErrorMessage);
-  }
-
   const safeName = file.name.replace(/[^a-zA-Z0-9_.-]/g, "-");
   const objectKey = `tickets/${ticketId}/${randomUUID()}-${safeName}`;
   const bytes = Buffer.from(await file.arrayBuffer());

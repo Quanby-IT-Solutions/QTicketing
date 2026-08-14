@@ -4,11 +4,12 @@ const nextConfig: NextConfig = {
   agentRules: false,
   serverExternalPackages: ["argon2"],
   experimental: {
-    // Server Actions default to a 1 MB body limit, which rejects ticket/comment
-    // uploads. The per-file cap is 10 MB (src/lib/storage.ts), so 100 MB allows
-    // up to ~10 max-size files per request. Tune this value as needed.
+    // File sizes are not restricted by the application. This higher transport
+    // allowance keeps browser Server Action uploads from being artificially capped.
+    // The hosting platform, reverse proxy, and storage provider can still impose
+    // their own request/object-size limits.
     serverActions: {
-      bodySizeLimit: "100mb",
+      bodySizeLimit: "1gb",
     },
   },
 };

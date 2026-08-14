@@ -1,13 +1,15 @@
 "use client";
 
 import * as React from "react";
-import { LoaderCircle, Save, ShieldCheck, UserCog } from "lucide-react";
+import { EllipsisVertical, Eye, LoaderCircle, Pencil, Save, ShieldCheck, Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 
-import { updateUserAccessAction } from "@/app/actions/users";
+import { deleteUserAction, updateUserAccessAction } from "@/app/actions/users";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogMedia, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import {
   Dialog,
   DialogContent,
@@ -58,7 +60,9 @@ export function UserAccessActions({
 }) {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
+  const [editing, setEditing] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [deleteOpen, setDeleteOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
   const userAccess = new Set(user.projectIds);
   const roleId = `role-${user.id}`;
@@ -97,17 +101,45 @@ export function UserAccessActions({
     });
   }
 
+  function handleDelete() {
+    if (isPending) return;
+    const formData = new FormData();
+    formData.set("userId", user.id);
+    startTransition(async () => {
+      try {
+        await deleteUserAction(formData);
+        setDeleteOpen(false);
+        setOpen(false);
+        router.refresh();
+        toast.add({ title: "User deleted", description: `${user.name}'s account was removed.`, type: "success" });
+      } catch (deleteError) {
+        const message = deleteError instanceof Error ? deleteError.message : "User could not be deleted.";
+        setError(message);
+        setDeleteOpen(false);
+        toast.add({ title: "User not deleted", description: message, type: "error", priority: "high" });
+      }
+    });
+  }
+
   return (
     <>
-      <Button
-        onClick={() => setOpen(true)}
-        size="sm"
-        type="button"
-        variant="outline"
-      >
-        <UserCog data-icon="inline-start" />
-        View permissions
-      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger render={<Button aria-label={`Open actions for ${user.name}`} size="icon-sm" type="button" variant="ghost" />}>
+          <EllipsisVertical aria-hidden="true" />
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-44">
+          <DropdownMenuItem onClick={() => { setEditing(false); setOpen(true); }}>
+            <Eye aria-hidden="true" />View permissions
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => { setEditing(true); setOpen(true); }}>
+            <Pencil aria-hidden="true" />Edit user
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => setDeleteOpen(true)} variant="destructive">
+            <Trash2 aria-hidden="true" />Delete user
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <Dialog
         onOpenChange={(nextOpen) => {
@@ -123,7 +155,7 @@ export function UserAccessActions({
                 <AvatarFallback>{initials(user.name)}</AvatarFallback>
               </Avatar>
               <div className="min-w-0">
-                <DialogTitle className="truncate">{user.name}</DialogTitle>
+            <DialogTitle className="truncate">{editing ? `Edit ${user.name}` : `${user.name} permissions`}</DialogTitle>
                 <DialogDescription className="truncate">
                   {user.email}
                 </DialogDescription>
@@ -145,7 +177,7 @@ export function UserAccessActions({
                   <NativeSelect
                     className="w-full"
                     defaultValue={user.role}
-                    disabled={isPending}
+                    disabled={isPending || !editing}
                     id={roleId}
                     name="role"
                   >
@@ -159,7 +191,7 @@ export function UserAccessActions({
                   <NativeSelect
                     className="w-full"
                     defaultValue={user.status}
-                    disabled={isPending}
+                    disabled={isPending || !editing}
                     id={statusId}
                     name="status"
                   >
@@ -172,7 +204,7 @@ export function UserAccessActions({
                   <input
                     className="size-4 accent-primary"
                     defaultChecked={user.active}
-                    disabled={isPending}
+                    disabled={isPending || !editing}
                     name="active"
                     type="checkbox"
                   />
@@ -194,7 +226,7 @@ export function UserAccessActions({
                       <input
                         className="mt-0.5 size-4 accent-primary"
                         defaultChecked={userAccess.has(project.id)}
-                        disabled={isPending}
+                        disabled={isPending || !editing}
                         name="projectIds"
                         type="checkbox"
                         value={project.id}
@@ -222,22 +254,35 @@ export function UserAccessActions({
             </div>
 
             <DialogFooter className="mx-0 mb-0 rounded-none">
-              <Button disabled={isPending} type="submit">
-                {isPending ? (
-                  <LoaderCircle
-                    aria-hidden="true"
-                    className="animate-spin"
-                    data-icon="inline-start"
-                  />
-                ) : (
-                  <Save data-icon="inline-start" />
-                )}
-                {isPending ? "Saving changes..." : "Save changes"}
-              </Button>
+              {editing ? (
+                <>
+                  <Button disabled={isPending} onClick={() => setDeleteOpen(true)} type="button" variant="destructive"><Trash2 data-icon="inline-start" />Delete user</Button>
+                  <Button disabled={isPending} type="submit">
+                    {isPending ? <LoaderCircle aria-hidden="true" className="animate-spin" data-icon="inline-start" /> : <Save data-icon="inline-start" />}
+                    {isPending ? "Saving changes..." : "Save changes"}
+                  </Button>
+                </>
+              ) : null}
             </DialogFooter>
           </form>
         </DialogContent>
       </Dialog>
+
+      <AlertDialog onOpenChange={setDeleteOpen} open={deleteOpen}>
+        <AlertDialogContent size="sm">
+          <AlertDialogHeader>
+            <AlertDialogMedia className="bg-destructive/10 text-destructive"><Trash2 aria-hidden="true" /></AlertDialogMedia>
+            <AlertDialogTitle>Delete {user.name}?</AlertDialogTitle>
+            <AlertDialogDescription>This permanently removes the account, project access, API keys, and sessions. This cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancel</AlertDialogCancel>
+            <AlertDialogAction disabled={isPending} onClick={handleDelete} variant="destructive">
+              {isPending ? <LoaderCircle className="animate-spin" /> : <Trash2 />} Delete user
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

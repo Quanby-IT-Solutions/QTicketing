@@ -19,7 +19,7 @@ import {
 import { collectCommentSubtree } from "@/lib/comment-tree";
 import { createTicket } from "@/lib/services/ticket-creation";
 import { notifyTicketDone } from "@/lib/ticket-notifications";
-import { attachmentSizeErrorMessage, deleteTicketAttachments, maxAttachmentBytes, uploadTicketAttachment } from "@/lib/storage";
+import { deleteTicketAttachments, uploadTicketAttachment } from "@/lib/storage";
 
 type CurrentUser = Awaited<ReturnType<typeof requireUser>>;
 type UserWithRole = {
@@ -447,12 +447,6 @@ export async function addCommentAction(formData: FormData) {
   }
 
   const attachmentFiles = getAttachmentFiles(formData);
-  for (const file of attachmentFiles) {
-    if (file.size > maxAttachmentBytes) {
-      throw new Error(attachmentSizeErrorMessage);
-    }
-  }
-
   // Upload to S3 before creating the comment so a failed upload never leaves a
   // persisted comment that the UI reported as failed.
   const uploadedAttachments: Awaited<ReturnType<typeof uploadTicketAttachment>>[] = [];
@@ -560,12 +554,6 @@ export async function updateCommentAction(formData: FormData) {
   });
 
   const attachmentFiles = getAttachmentFiles(formData);
-  for (const file of attachmentFiles) {
-    if (file.size > maxAttachmentBytes) {
-      throw new Error(attachmentSizeErrorMessage);
-    }
-  }
-
   // Upload to S3 before touching the database so a failed upload never leaves
   // the comment in a half-updated state.
   const uploadedAttachments: Awaited<ReturnType<typeof uploadTicketAttachment>>[] = [];

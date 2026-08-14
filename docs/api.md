@@ -97,7 +97,7 @@ Reproduce these three reference screens as closely as possible in the host proje
 - Header identifies the project and its human-readable title.
 - Fields in order: title, description, locked project display, priority Select, category, due-date picker, department, location, and attachments.
 - Use a two-column layout for project/priority, category/due date, and department/location on desktop; stack on mobile.
-- Attachments are optional; show selected files and enforce the 10 MB-per-file limit.
+- Attachments are optional; show selected files.
 - Footer has secondary **Cancel** and primary **Create ticket** actions.
 
 #### Ticket-details dialog
@@ -149,7 +149,7 @@ Authenticated Ticketing users can upload files from another project's Ticketing 
 | Add a ticket attachment                           | `POST /api/v1/projects/{CODE}/tickets/{ticketId}/attachments`                      |
 | Add an attachment to the user's own comment/reply | `POST /api/v1/projects/{CODE}/tickets/{ticketId}/comments/{commentId}/attachments` |
 
-Send `multipart/form-data` with a single `file` field. Files must be larger than zero and at most 10 MB. Ticket uploads require project access; comment uploads additionally require the caller to own the comment unless the caller is an administrator.
+Send `multipart/form-data` with a single `file` field. Ticket uploads require project access; comment uploads additionally require the caller to own the comment unless the caller is an administrator.
 
 ```bash
 curl --request POST \

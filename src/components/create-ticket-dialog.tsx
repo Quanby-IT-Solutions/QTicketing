@@ -59,7 +59,6 @@ type FormErrors = Partial<
 >
 
 const TicketDialogContext = createContext<TicketDialogContextValue | null>(null)
-const maxAttachmentBytes = 10 * 1024 * 1024
 
 function getCurrentRouteProject(pathname: string, projects: CreateTicketProject[]) {
   const match = pathname.match(/^\/tickets\/([^/]+)\/?$/)
@@ -86,10 +85,6 @@ function validateTicketForm(formData: FormData): FormErrors {
   const category = String(formData.get("category") ?? "").trim()
   const department = String(formData.get("department") ?? "").trim()
   const location = String(formData.get("location") ?? "").trim()
-  const attachments = formData
-    .getAll("attachments")
-    .filter((value): value is File => value instanceof File && value.size > 0)
-
   if (title.length < 3) errors.title = "Enter a title with at least 3 characters."
   else if (title.length > 160) errors.title = "Keep the title to 160 characters or fewer."
 
@@ -103,10 +98,6 @@ function validateTicketForm(formData: FormData): FormErrors {
 
   if (department.length > 80) errors.department = "Keep the department to 80 characters or fewer."
   if (location.length > 120) errors.location = "Keep the location to 120 characters or fewer."
-  if (attachments.some((file) => file.size > maxAttachmentBytes)) {
-    errors.attachments = "Each attachment must be 10 MB or smaller."
-  }
-
   return errors
 }
 
@@ -459,7 +450,7 @@ function CreateTicketDialogForm({
               name="attachments"
               type="file"
             />
-            <FieldDescription id="create-ticket-attachments-help">Optional. Each file can be up to 10 MB.</FieldDescription>
+            <FieldDescription id="create-ticket-attachments-help">Optional. You can attach one or more files.</FieldDescription>
             <FieldError id="create-ticket-attachments-error">{errors.attachments}</FieldError>
           </Field>
         </div>

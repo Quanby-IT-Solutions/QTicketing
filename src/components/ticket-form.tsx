@@ -173,7 +173,7 @@ export function TicketForm({
               <Paperclip className="size-4 text-muted-foreground" />
             </span>
             <span className="text-sm font-medium">Choose files to attach</span>
-            <span className="text-xs font-normal text-muted-foreground">Images and documents up to 10 MB each</span>
+            <span className="text-xs font-normal text-muted-foreground">Images and documents</span>
             <Input className="sr-only" id="attachments" multiple name="attachments" type="file" />
           </Label>
         </CardContent>
