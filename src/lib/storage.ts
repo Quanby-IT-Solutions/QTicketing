@@ -70,3 +70,14 @@ export async function getTicketAttachmentObject(objectKey: string) {
   );
 }
 
+/** Produces a Content-Disposition-compatible filename without unsafe Unicode/control bytes. */
+export function getAttachmentDownloadFilename(filename: string) {
+  const safeFilename = filename
+    .normalize("NFKD")
+    .replace(/[^\x20-\x7E]/g, "_")
+    .replace(/["\\;\r\n]/g, "_")
+    .trim();
+
+  return safeFilename || "attachment";
+}
+

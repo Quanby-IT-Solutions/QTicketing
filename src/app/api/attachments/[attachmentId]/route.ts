@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { ticketAttachments, tickets, userProjects } from "@/db/schema";
 import { getCurrentUser } from "@/lib/auth";
-import { getTicketAttachmentObject } from "@/lib/storage";
+import { getAttachmentDownloadFilename, getTicketAttachmentObject } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export async function GET(_request: Request, { params }: { params: Promise<{ att
   try {
     const object = await getTicketAttachmentObject(attachment.objectKey);
     if (!object.Body) return NextResponse.json({ error: "Attachment not found" }, { status: 404 });
-    const filename = attachment.filename.replace(/["\\\r\n]/g, "_");
+    const filename = getAttachmentDownloadFilename(attachment.filename);
     return new NextResponse(object.Body.transformToWebStream(), {
       headers: {
         "Cache-Control": "private, no-store",
