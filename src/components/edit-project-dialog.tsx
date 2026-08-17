@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { FolderKanban, LoaderCircle, PencilIcon } from "lucide-react";
+import { FolderKanban, ImagePlus, LoaderCircle, PencilIcon } from "lucide-react";
 import { updateProjectAction } from "@/app/actions/projects";
 import { Button } from "@/components/ui/button";
 import {
@@ -21,6 +21,7 @@ export type EditableProject = {
   id: string;
   name: string;
   title: string;
+  logoObjectKey: string | null;
 };
 
 type EditProjectDialogProps = {
@@ -98,6 +99,14 @@ export function EditProjectDialog({
               <p className="text-xs text-muted-foreground">
                 Uppercase letters, numbers, and hyphens.
               </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-project-logo">Project logo</Label>
+              <div className="flex items-center gap-3">
+                {project.logoObjectKey ? <img alt="Current project logo" className="size-10 rounded-lg border object-cover" src={`/api/projects/${project.id}/logo`} /> : <span className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground"><ImagePlus className="size-4" /></span>}
+                <Input accept="image/*" id="edit-project-logo" name="logo" type="file" />
+              </div>
+              <p className="text-xs text-muted-foreground">Optional. Choosing a new image replaces the current logo.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-project-title">Display name</Label>

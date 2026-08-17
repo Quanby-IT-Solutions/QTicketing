@@ -61,6 +61,21 @@ export async function getAttachmentDownloadUrl(objectKey: string) {
   );
 }
 
+export async function uploadProjectLogo(projectId: string, file: File) {
+  if (!file.type.startsWith("image/")) throw new Error("Project logos must be image files.");
+
+  const safeName = file.name.replace(/[^a-zA-Z0-9_.-]/g, "-");
+  const objectKey = `project-logos/${projectId}/${randomUUID()}-${safeName || "logo"}`;
+  await s3.send(new PutObjectCommand({
+    Bucket: env.S3_BUCKET_NAME,
+    Key: objectKey,
+    Body: Buffer.from(await file.arrayBuffer()),
+    ContentType: file.type,
+  }));
+
+  return { objectKey, mimeType: file.type };
+}
+
 export async function getTicketAttachmentObject(objectKey: string) {
   return s3.send(
     new GetObjectCommand({

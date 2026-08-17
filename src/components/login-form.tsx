@@ -64,8 +64,6 @@ export function LoginForm({
     <form
       action={loginAction}
       className="space-y-5"
-      data-loading-message="Signing you in..."
-      data-page-loading="true"
       onSubmit={handleSubmit}
     >
       {registered ? (

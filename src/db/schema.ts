@@ -40,6 +40,8 @@ export const projects = pgTable("projects", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar("name", { length: 40 }).notNull().unique(),
   title: varchar("title", { length: 120 }).notNull(),
+  logoObjectKey: text("logo_object_key"),
+  logoMimeType: varchar("logo_mime_type", { length: 160 }),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

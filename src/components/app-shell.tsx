@@ -10,7 +10,7 @@ export function AppShell({
   children,
 }: {
   user: { name: string; email: string; role: UserRole }
-  projects: { id: string; name: string; title: string }[]
+  projects: { id: string; name: string; title: string; logoObjectKey: string | null }[]
   children: React.ReactNode
 }) {
   return (

@@ -1,5 +1,6 @@
 "use client"
 
+import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { FolderKanban } from "lucide-react"
@@ -18,7 +19,7 @@ import {
 export function NavProjects({
   projects,
 }: {
-  projects: { id: string; name: string; title: string }[]
+  projects: { id: string; name: string; title: string; logoObjectKey: string | null }[]
 }) {
   const pathname = usePathname()
   const { setOpenMobile } = useSidebar()
@@ -49,7 +50,7 @@ export function NavProjects({
                     }
                     tooltip={`${project.title} (${project.name})`}
                   >
-                    <FolderKanban />
+                    <ProjectNavIcon project={project} />
                     <span>{project.title}</span>
                   </SidebarMenuButton>
                   <SidebarMenuBadge className="max-w-14 truncate font-mono text-[10px] text-muted-foreground">
@@ -66,5 +67,34 @@ export function NavProjects({
         )}
       </SidebarGroupContent>
     </SidebarGroup>
+  )
+}
+
+function ProjectNavIcon({
+  project,
+}: {
+  project: { id: string; logoObjectKey: string | null }
+}) {
+  const [loaded, setLoaded] = React.useState(false)
+  const [failed, setFailed] = React.useState(false)
+
+  React.useEffect(() => {
+    setLoaded(false)
+    setFailed(false)
+  }, [project.id, project.logoObjectKey])
+
+  if (!project.logoObjectKey || failed) return <FolderKanban />
+
+  return (
+    <span className="relative flex size-4 shrink-0 items-center justify-center overflow-hidden rounded-sm">
+      {!loaded ? <FolderKanban className="absolute size-4" /> : null}
+      <img
+        alt=""
+        className={`size-4 object-cover transition-opacity ${loaded ? "opacity-100" : "opacity-0"}`}
+        onError={() => setFailed(true)}
+        onLoad={() => setLoaded(true)}
+        src={`/api/projects/${project.id}/logo`}
+      />
+    </span>
   )
 }

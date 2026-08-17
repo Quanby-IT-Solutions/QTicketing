@@ -2,10 +2,12 @@
 
 import { revalidatePath } from "next/cache";
 import { eq } from "drizzle-orm";
+import { randomUUID } from "crypto";
 import { db } from "@/db";
 import { projects, userProjects } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
 import { canManageUsers } from "@/lib/permissions";
+import { deleteTicketAttachments, uploadProjectLogo } from "@/lib/storage";
 import {
   createProjectSchema,
   updateProjectSchema,
@@ -22,9 +24,14 @@ export async function createProjectAction(formData: FormData) {
     title: formData.get("title"),
   });
 
+  const logo = formData.get("logo");
+  const logoFile = logo instanceof File && logo.size > 0 ? logo : null;
+  const projectId = randomUUID();
+  const uploadedLogo = logoFile ? await uploadProjectLogo(projectId, logoFile) : null;
+
   const [inserted] = await db
     .insert(projects)
-    .values({ name: parsed.name, title: parsed.title, active: true })
+    .values({ id: projectId, name: parsed.name, title: parsed.title, active: true, logoObjectKey: uploadedLogo?.objectKey, logoMimeType: uploadedLogo?.mimeType })
     .returning({ id: projects.id });
 
   await db.insert(userProjects).values({
@@ -47,10 +54,18 @@ export async function updateProjectAction(formData: FormData) {
     title: formData.get("title"),
   });
 
+  const logo = formData.get("logo");
+  const logoFile = logo instanceof File && logo.size > 0 ? logo : null;
+  const [current] = await db.select({ logoObjectKey: projects.logoObjectKey }).from(projects).where(eq(projects.id, parsed.projectId)).limit(1);
+  if (!current) throw new Error("Project not found.");
+  const uploadedLogo = logoFile ? await uploadProjectLogo(parsed.projectId, logoFile) : null;
+
   await db
     .update(projects)
-    .set({ name: parsed.name, title: parsed.title })
+    .set({ name: parsed.name, title: parsed.title, ...(uploadedLogo ? { logoObjectKey: uploadedLogo.objectKey, logoMimeType: uploadedLogo.mimeType } : {}) })
     .where(eq(projects.id, parsed.projectId));
+
+  if (uploadedLogo && current.logoObjectKey) await deleteTicketAttachments([current.logoObjectKey]);
 
   revalidatePath("/admin/projects");
   revalidatePath("/admin/users");

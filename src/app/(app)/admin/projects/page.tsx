@@ -51,11 +51,16 @@ export default async function ProjectsPage() {
           <CardDescription>Create a short code and a descriptive display name for the sidebar and ticket forms.</CardDescription>
         </CardHeader>
         <CardContent>
-          <form action={createProjectAction} className="grid gap-5 md:grid-cols-[minmax(10rem,0.65fr)_minmax(16rem,1.35fr)_auto] md:items-end">
+          <form action={createProjectAction} className="grid gap-5 md:grid-cols-[minmax(10rem,0.65fr)_minmax(16rem,1.35fr)_minmax(12rem,0.8fr)_auto] md:items-end">
             <div className="space-y-2">
               <Label htmlFor="name">Project code</Label>
               <Input className="font-mono uppercase" id="name" maxLength={40} name="name" placeholder="FINANCE" required />
               <p className="text-xs text-muted-foreground">Uppercase letters, numbers, and hyphens.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="logo">Project logo</Label>
+              <Input accept="image/*" id="logo" name="logo" type="file" />
+              <p className="text-xs text-muted-foreground">Optional image used to identify this project.</p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="title">Display name</Label>
@@ -95,8 +100,8 @@ export default async function ProjectsPage() {
                   <TableRow key={project.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                          <Shapes className="size-4" />
+                        <span className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-primary/10 text-primary">
+                          {project.logoObjectKey ? <img alt="" className="size-full object-cover" src={`/api/projects/${project.id}/logo`} /> : <Shapes className="size-4" />}
                         </span>
                         <span className="font-medium">{project.title}</span>
                       </div>
@@ -121,6 +126,7 @@ export default async function ProjectsPage() {
                           id: project.id,
                           name: project.name,
                           title: project.title,
+                          logoObjectKey: project.logoObjectKey,
                           active: project.active,
                         }}
                       />

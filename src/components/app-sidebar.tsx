@@ -21,7 +21,7 @@ export function AppSidebar({
   projects,
 }: {
   user: { name: string; email: string; role: UserRole };
-  projects: { id: string; name: string; title: string }[];
+  projects: { id: string; name: string; title: string; logoObjectKey: string | null }[];
 }) {
   const workspaceItems: NavItem[] = [
     { title: "Dashboard", href: "/dashboard", icon: "dashboard" },
