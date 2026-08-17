@@ -2,7 +2,12 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { FolderKanban, ImagePlus, LoaderCircle, PencilIcon } from "lucide-react";
+import {
+  FolderKanban,
+  ImagePlus,
+  LoaderCircle,
+  PencilIcon,
+} from "lucide-react";
 import { updateProjectAction } from "@/app/actions/projects";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,7 +20,10 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
+import {
+  NativeSelect,
+  NativeSelectOption,
+} from "@/components/ui/native-select";
 import { toast } from "@/components/ui/toast";
 
 export type EditableProject = {
@@ -39,6 +47,18 @@ export function EditProjectDialog({
 }: EditProjectDialogProps) {
   const router = useRouter();
   const [isPending, startTransition] = React.useTransition();
+  const [logoPreview, setLogoPreview] = React.useState<string | null>(project.logoObjectKey ? `/api/projects/${project.id}/logo` : null);
+
+  React.useEffect(() => {
+    setLogoPreview(project.logoObjectKey ? `/api/projects/${project.id}/logo` : null);
+  }, [project.id, project.logoObjectKey]);
+
+  React.useEffect(() => () => { if (logoPreview?.startsWith("blob:")) URL.revokeObjectURL(logoPreview); }, [logoPreview]);
+
+  function handleLogoChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    setLogoPreview(file ? URL.createObjectURL(file) : project.logoObjectKey ? `/api/projects/${project.id}/logo` : null);
+  }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -85,7 +105,11 @@ export function EditProjectDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <form className="flex min-h-0 flex-1 flex-col" key={project.id} onSubmit={handleSubmit}>
+        <form
+          className="flex min-h-0 flex-1 flex-col"
+          key={project.id}
+          onSubmit={handleSubmit}
+        >
           <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto p-4 sm:grid-cols-2 sm:p-5">
             <div className="space-y-2">
               <Label htmlFor="edit-project-name">Project code</Label>
@@ -112,25 +136,50 @@ export function EditProjectDialog({
                 placeholder="Finance Management System"
                 required
               />
-              <p className="text-xs text-muted-foreground">Shown throughout ticket forms and tables.</p>
+              <p className="text-xs text-muted-foreground">
+                Shown throughout ticket forms and tables.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-project-classification">Project type</Label>
-              <NativeSelect defaultValue={project.classification} id="edit-project-classification" name="classification">
-                <NativeSelectOption value="white-label">White Label</NativeSelectOption>
-                <NativeSelectOption value="custom">Custom / Bespoke</NativeSelectOption>
-                <NativeSelectOption value="internal">Internal</NativeSelectOption>
+              <NativeSelect
+                className="w-full"
+                defaultValue={project.classification}
+                id="edit-project-classification"
+                name="classification"
+              >
+                <NativeSelectOption value="white-label">
+                  White Label
+                </NativeSelectOption>
+                <NativeSelectOption value="custom">
+                  Custom / Bespoke
+                </NativeSelectOption>
+                <NativeSelectOption value="internal">
+                  Internal
+                </NativeSelectOption>
                 <NativeSelectOption value="product">Product</NativeSelectOption>
               </NativeSelect>
-              <p className="text-xs text-muted-foreground">How this system is delivered and branded.</p>
+              <p className="text-xs text-muted-foreground">
+                How this system is delivered and branded.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="edit-project-logo">Project logo</Label>
               <div className="flex items-center gap-3">
-                {project.logoObjectKey ? <img alt="Current project logo" className="size-10 rounded-lg border object-cover" src={`/api/projects/${project.id}/logo`} /> : <span className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground"><ImagePlus className="size-4" /></span>}
-                <Input accept="image/*" id="edit-project-logo" name="logo" type="file" />
+                <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-muted-foreground">
+                  {logoPreview ? <img alt="Project logo preview" className="size-full object-cover" src={logoPreview} /> : <ImagePlus className="size-4" />}
+                </span>
+                <Input
+                  accept="image/*"
+                  id="edit-project-logo"
+                  name="logo"
+                  onChange={handleLogoChange}
+                  type="file"
+                />
               </div>
-              <p className="text-xs text-muted-foreground">Optional. Choosing a new image replaces the current logo.</p>
+              <p className="text-xs text-muted-foreground">
+                Optional. Choosing a new image replaces the current logo.
+              </p>
             </div>
           </div>
 

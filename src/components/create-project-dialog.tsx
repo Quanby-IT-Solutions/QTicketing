@@ -25,6 +25,14 @@ export function CreateProjectDialog() {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [isPending, startTransition] = React.useTransition();
+  const [logoPreview, setLogoPreview] = React.useState<string | null>(null);
+
+  React.useEffect(() => () => { if (logoPreview?.startsWith("blob:")) URL.revokeObjectURL(logoPreview); }, [logoPreview]);
+
+  function handleLogoChange(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    setLogoPreview(file ? URL.createObjectURL(file) : null);
+  }
 
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -36,6 +44,7 @@ export function CreateProjectDialog() {
       try {
         await createProjectAction(formData);
         form.reset();
+        setLogoPreview(null);
         setOpen(false);
         router.refresh();
         toast.add({
@@ -129,12 +138,15 @@ export function CreateProjectDialog() {
             </div>
             <div className="space-y-2">
               <Label htmlFor="create-project-logo">Project logo</Label>
-              <div className="flex items-center gap-2">
-                <ImagePlus className="size-4 text-muted-foreground" />
+              <div className="flex items-center gap-3">
+                <span className="flex size-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-muted-foreground">
+                  {logoPreview ? <img alt="Selected project logo" className="size-full object-cover" src={logoPreview} /> : <ImagePlus className="size-4" />}
+                </span>
                 <Input
                   accept="image/*"
                   id="create-project-logo"
                   name="logo"
+                  onChange={handleLogoChange}
                   type="file"
                 />
               </div>
