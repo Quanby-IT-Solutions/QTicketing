@@ -104,6 +104,7 @@ Reproduce these three reference screens as closely as possible in the host proje
 
 ![Ticket details design](view-ticket.jpeg)
 
+- **Required design:** implement the Ticket Details dialog to match `docs/view-ticket.jpeg`; do not replace it with a separate page or a simplified card. Preserve the same header hierarchy, two-column desktop layout, scroll behavior, attachment cards, conversation layout, and right-side details/history rail. Stack the columns only on smaller screens.
 - Full-width scrollable dialog with ticket number, created date, title/requester, and status/priority badges in the header.
 - Main content uses a responsive two-column layout: description, attachments, and conversation on the left; ticket details and scrollable status history on the right.
 - Attachment rows show icon, filename, size, and View/Download action; fetch files through the host backend proxy, never via S3 URLs.
@@ -210,7 +211,7 @@ This project code is {CODE}. Hard-code that code in the backend Ticketing client
 
 Create backend proxy endpoints for Ticketing ticket CRUD and comment/reply CRUD. The browser must call only this project's backend, never Ticketing directly and never receive the Bearer key.
 
-Build the UI to match Ticketing: searchable/filterable ticket table; shadcn status and priority Select controls; a shadcn action-menu icon on every row with View, Edit, and Delete; Create ticket modal; edit-ticket modal with an Attach files control and existing attachment rows; ticket detail modal with status history and assignee; comments and nested replies; edit/delete actions; and a typed confirmation before setting status to Done. When a user sets Ongoing or Done, refresh the row and details because Ticketing automatically assigns that authenticated user. Use Ticketing's status and priority colors.
+Build the UI to match Ticketing: searchable/filterable ticket table; shadcn status and priority Select controls; a shadcn action-menu icon on every row with View, Edit, and Delete; Create ticket modal; edit-ticket modal with an Attach files control and existing attachment rows; and a Ticket Details dialog that matches `docs/view-ticket.jpeg` exactly in layout and information hierarchy (not a standalone page). Include its details/history right rail, conversation, nested replies, attachments, edit/delete actions, and a typed confirmation before setting status to Done. When a user sets Ongoing or Done, refresh the row and details because Ticketing automatically assigns that authenticated user. Use Ticketing's status and priority colors.
 
 Use the visual references in `docs/Table UI.jpeg`, `docs/Create-ticket.jpeg`, and `docs/view-ticket.jpeg` as the required design specification. Match their information hierarchy, dialog layout, controls, cards, attachment rows, and status-history presentation.
 
