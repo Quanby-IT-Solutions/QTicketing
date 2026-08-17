@@ -117,6 +117,7 @@ Build the following user experience in the host project:
 - A ticket table with search, status and priority filters, pagination, status/priority dropdowns, a refresh strategy, and an action-menu icon in every row.
 - The action-menu icon must open a shadcn DropdownMenu with **View**, **Edit**, and **Delete** actions. View opens the ticket-details dialog, Edit opens the edit-ticket dialog, and Delete opens a typed confirmation dialog before calling the DELETE endpoint.
 - A **Create ticket** dialog with title, description, priority, category, department, location, due date, and file attachments.
+- An **Edit ticket** dialog with the same editable fields, an **Attach files** control, and the current ticket attachments. Save the ticket with `PATCH`, then upload each newly selected file with the ticket-attachment endpoint below. Existing attachments remain available through the attachment list/view endpoints.
 - A ticket-details dialog showing status, priority, requester, project, assignee, description, attachments, and status history.
 - A conversation section supporting comments, replies to any comment, edit/delete for permitted comments, and comment attachments.
 - A confirmation dialog before changing a ticket to `done`.
@@ -131,6 +132,7 @@ The host project should expose these authenticated routes to its own web app, th
 | `GET /api/v1/ticketing/tickets`                                                         | `GET /api/v1/projects/{CODE}/tickets`                                                         |
 | `POST /api/v1/ticketing/tickets`                                                        | `POST /api/v1/projects/{CODE}/tickets`                                                        |
 | `GET/PATCH/DELETE /api/v1/ticketing/tickets/:ticketId`                                  | `GET/PATCH/DELETE /api/v1/projects/{CODE}/tickets/:ticketId`                                  |
+| `POST /api/v1/ticketing/tickets/:ticketId/attachments`                                   | `POST /api/v1/projects/{CODE}/tickets/:ticketId/attachments`                                   |
 | `GET/POST /api/v1/ticketing/tickets/:ticketId/comments`                                 | `GET/POST /api/v1/projects/{CODE}/tickets/:ticketId/comments`                                 |
 | `PATCH/DELETE /api/v1/ticketing/tickets/:ticketId/comments/:commentId`                  | `PATCH/DELETE /api/v1/projects/{CODE}/tickets/:ticketId/comments/:commentId`                  |
 | `GET /api/v1/ticketing/tickets/:ticketId/attachments`                                   | `GET /api/v1/projects/{CODE}/tickets/:ticketId/attachments`                                   |
@@ -140,9 +142,9 @@ The host project should expose these authenticated routes to its own web app, th
 
 Use `parentCommentId` in the comment `POST` body to create a reply. A `PATCH` ticket request can update `title`, `description`, `status`, `priority`, `category`, `department`, `location`, and `dueDate`.
 
-### Authenticated file uploads
+### Authenticated file uploads (create and edit ticket)
 
-Authenticated Ticketing users can upload files from another project's Ticketing UI. The host backend must proxy the multipart request with the authenticated user's Ticketing Bearer key; the browser must never receive S3 credentials or upload directly to Ticketing S3.
+Authenticated Ticketing users can upload files from another project's Ticketing UI. This includes files selected while creating a ticket and files added later from the **Edit ticket** dialog. The host backend must proxy the multipart request with the authenticated user's Ticketing Bearer key; the browser must never receive S3 credentials or upload directly to Ticketing S3.
 
 | Purpose                                           | Method and Ticketing endpoint                                                      |
 | ------------------------------------------------- | ---------------------------------------------------------------------------------- |
@@ -150,6 +152,8 @@ Authenticated Ticketing users can upload files from another project's Ticketing 
 | Add an attachment to the user's own comment/reply | `POST /api/v1/projects/{CODE}/tickets/{ticketId}/comments/{commentId}/attachments` |
 
 Send `multipart/form-data` with a single `file` field. Ticket uploads require project access; comment uploads additionally require the caller to own the comment unless the caller is an administrator.
+
+For an edit flow, first call `PATCH /api/v1/projects/{CODE}/tickets/{ticketId}` for the text/status/priority changes. Then call `POST /api/v1/projects/{CODE}/tickets/{ticketId}/attachments` once per newly selected file. Refresh the ticket and its attachment list after all uploads complete.
 
 ```bash
 curl --request POST \
@@ -206,7 +210,7 @@ This project code is {CODE}. Hard-code that code in the backend Ticketing client
 
 Create backend proxy endpoints for Ticketing ticket CRUD and comment/reply CRUD. The browser must call only this project's backend, never Ticketing directly and never receive the Bearer key.
 
-Build the UI to match Ticketing: searchable/filterable ticket table; shadcn status and priority Select controls; a shadcn action-menu icon on every row with View, Edit, and Delete; Create ticket modal; ticket detail modal with status history and assignee; comments and nested replies; edit/delete actions; and a typed confirmation before setting status to Done. When a user sets Ongoing or Done, refresh the row and details because Ticketing automatically assigns that authenticated user. Use Ticketing's status and priority colors.
+Build the UI to match Ticketing: searchable/filterable ticket table; shadcn status and priority Select controls; a shadcn action-menu icon on every row with View, Edit, and Delete; Create ticket modal; edit-ticket modal with an Attach files control and existing attachment rows; ticket detail modal with status history and assignee; comments and nested replies; edit/delete actions; and a typed confirmation before setting status to Done. When a user sets Ongoing or Done, refresh the row and details because Ticketing automatically assigns that authenticated user. Use Ticketing's status and priority colors.
 
 Use the visual references in `docs/Table UI.jpeg`, `docs/Create-ticket.jpeg`, and `docs/view-ticket.jpeg` as the required design specification. Match their information hierarchy, dialog layout, controls, cards, attachment rows, and status-history presentation.
 
