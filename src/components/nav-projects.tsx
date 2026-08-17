@@ -3,7 +3,7 @@
 import * as React from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { FolderKanban } from "lucide-react"
+import { FolderKanban, Search } from "lucide-react"
 
 import {
   SidebarGroup,
@@ -15,6 +15,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { Input } from "@/components/ui/input"
 
 export function NavProjects({
   projects,
@@ -23,14 +24,34 @@ export function NavProjects({
 }) {
   const pathname = usePathname()
   const { setOpenMobile } = useSidebar()
+  const [query, setQuery] = React.useState("")
+  const normalizedQuery = query.trim().toLocaleLowerCase()
+  const visibleProjects = normalizedQuery
+    ? projects.filter((project) =>
+        `${project.title} ${project.name}`.toLocaleLowerCase().includes(normalizedQuery),
+      )
+    : projects
 
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Projects</SidebarGroupLabel>
       <SidebarGroupContent>
         {projects.length > 0 ? (
+          <div className="relative mb-2 px-2 group-data-[collapsible=icon]:hidden">
+            <Search className="pointer-events-none absolute left-4 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              aria-label="Search projects"
+              className="h-8 pl-7 text-xs"
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search projects..."
+              type="search"
+              value={query}
+            />
+          </div>
+        ) : null}
+        {visibleProjects.length > 0 ? (
           <SidebarMenu className="gap-1">
-            {projects.map((project) => {
+            {visibleProjects.map((project) => {
               const href = `/tickets/${encodeURIComponent(project.name)}`
               const active =
                 pathname === href ||
@@ -60,6 +81,10 @@ export function NavProjects({
               )
             })}
           </SidebarMenu>
+        ) : projects.length > 0 ? (
+          <p className="px-2 py-2 text-xs leading-5 text-muted-foreground group-data-[collapsible=icon]:hidden">
+            No projects match your search.
+          </p>
         ) : (
           <p className="px-2 py-1 text-xs leading-5 text-muted-foreground group-data-[collapsible=icon]:hidden">
             No project access yet.
