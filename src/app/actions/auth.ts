@@ -13,9 +13,11 @@ export async function loginAction(formData: FormData) {
   const password = String(formData.get("password") ?? "");
 
   const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
-  if (!user || !user.active || user.status !== "approved" || !(await verifyPassword(user.passwordHash, password))) {
-    throw new Error("Invalid email or password.");
-  }
+  if (!user) redirect("/login?error=incorrect-email");
+  if (!(await verifyPassword(user.passwordHash, password))) redirect("/login?error=incorrect-password");
+  if (!user.active) redirect("/login?error=inactive-account");
+  if (user.status === "pending") redirect("/login?error=pending-approval");
+  if (user.status !== "approved") redirect("/login?error=not-approved");
 
   await createSession(user.id);
   redirect("/tickets");

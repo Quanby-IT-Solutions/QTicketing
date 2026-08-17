@@ -28,9 +28,9 @@ function decodeRememberedEmail(value: string | undefined) {
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ registered?: string }>;
+  searchParams: Promise<{ registered?: string; error?: string }>;
 }) {
-  const { registered } = await searchParams;
+  const { registered, error } = await searchParams;
   const cookieStore = await cookies();
   const rememberedEmail = decodeRememberedEmail(
     cookieStore.get("ticketing_remembered_email")?.value,
@@ -59,6 +59,7 @@ export default async function LoginPage({
             <CardContent>
               <LoginForm
                 registered={Boolean(registered)}
+                loginError={error}
                 rememberedEmail={rememberedEmail}
               />
             </CardContent>

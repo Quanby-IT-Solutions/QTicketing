@@ -10,19 +10,45 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "@/components/ui/toast";
 
 const rememberedEmailCookie = "ticketing_remembered_email";
 const rememberedEmailMaxAge = 60 * 60 * 24 * 365;
 
+const loginErrorMessages: Record<string, string> = {
+  "incorrect-email": "No account was found for that email address.",
+  "incorrect-password": "The password you entered is incorrect.",
+  "inactive-account": "This account is inactive. Contact an administrator for assistance.",
+  "pending-approval": "Your account is waiting for administrator approval.",
+  "not-approved": "This account has not been approved. Contact an administrator for assistance.",
+};
+
 export function LoginForm({
   registered,
+  loginError,
   rememberedEmail = "",
 }: {
   registered: boolean;
+  loginError?: string;
   rememberedEmail?: string;
 }) {
   const [email, setEmail] = React.useState(rememberedEmail);
   const [rememberMe, setRememberMe] = React.useState(Boolean(rememberedEmail));
+  const displayedLoginError = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (!loginError || displayedLoginError.current === loginError) return;
+    const message = loginErrorMessages[loginError];
+    if (!message) return;
+
+    displayedLoginError.current = loginError;
+    toast.add({
+      title: "Unable to sign in",
+      description: message,
+      type: "error",
+      priority: "high",
+    });
+  }, [loginError]);
 
   function handleSubmit() {
     const normalizedEmail = email.trim().toLowerCase();
