@@ -42,6 +42,7 @@ export const projects = pgTable("projects", {
   title: varchar("title", { length: 120 }).notNull(),
   logoObjectKey: text("logo_object_key"),
   logoMimeType: varchar("logo_mime_type", { length: 160 }),
+  classification: varchar("classification", { length: 20 }).notNull().default("internal"),
   active: boolean("active").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });

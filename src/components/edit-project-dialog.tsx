@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { toast } from "@/components/ui/toast";
 
 export type EditableProject = {
@@ -22,6 +23,7 @@ export type EditableProject = {
   name: string;
   title: string;
   logoObjectKey: string | null;
+  classification: string;
 };
 
 type EditProjectDialogProps = {
@@ -72,19 +74,19 @@ export function EditProjectDialog({
 
   return (
     <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent className="flex max-h-[calc(100svh-2rem)] max-w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+      <DialogContent className="flex max-h-[calc(100svh-2rem)] max-w-[calc(100%-1rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
         <DialogHeader className="border-b p-4 pr-12 sm:p-5 sm:pr-12">
           <DialogTitle className="flex items-center gap-2">
             <FolderKanban className="size-4 text-primary" />
             Edit project
           </DialogTitle>
           <DialogDescription>
-            Update the project code or display name.
+            Update the workspace details, branding, and delivery type.
           </DialogDescription>
         </DialogHeader>
 
-        <form className="flex min-h-0 flex-1 flex-col" onSubmit={handleSubmit}>
-          <div className="min-h-0 flex-1 space-y-5 p-4 sm:p-5">
+        <form className="flex min-h-0 flex-1 flex-col" key={project.id} onSubmit={handleSubmit}>
+          <div className="grid min-h-0 flex-1 gap-5 overflow-y-auto p-4 sm:grid-cols-2 sm:p-5">
             <div className="space-y-2">
               <Label htmlFor="edit-project-name">Project code</Label>
               <Input
@@ -101,14 +103,6 @@ export function EditProjectDialog({
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="edit-project-logo">Project logo</Label>
-              <div className="flex items-center gap-3">
-                {project.logoObjectKey ? <img alt="Current project logo" className="size-10 rounded-lg border object-cover" src={`/api/projects/${project.id}/logo`} /> : <span className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground"><ImagePlus className="size-4" /></span>}
-                <Input accept="image/*" id="edit-project-logo" name="logo" type="file" />
-              </div>
-              <p className="text-xs text-muted-foreground">Optional. Choosing a new image replaces the current logo.</p>
-            </div>
-            <div className="space-y-2">
               <Label htmlFor="edit-project-title">Display name</Label>
               <Input
                 defaultValue={project.title}
@@ -118,9 +112,25 @@ export function EditProjectDialog({
                 placeholder="Finance Management System"
                 required
               />
-              <p className="text-xs text-muted-foreground">
-                Shown throughout ticket forms and tables.
-              </p>
+              <p className="text-xs text-muted-foreground">Shown throughout ticket forms and tables.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-project-classification">Project type</Label>
+              <NativeSelect defaultValue={project.classification} id="edit-project-classification" name="classification">
+                <NativeSelectOption value="white-label">White Label</NativeSelectOption>
+                <NativeSelectOption value="custom">Custom / Bespoke</NativeSelectOption>
+                <NativeSelectOption value="internal">Internal</NativeSelectOption>
+                <NativeSelectOption value="product">Product</NativeSelectOption>
+              </NativeSelect>
+              <p className="text-xs text-muted-foreground">How this system is delivered and branded.</p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-project-logo">Project logo</Label>
+              <div className="flex items-center gap-3">
+                {project.logoObjectKey ? <img alt="Current project logo" className="size-10 rounded-lg border object-cover" src={`/api/projects/${project.id}/logo`} /> : <span className="flex size-10 items-center justify-center rounded-lg bg-muted text-muted-foreground"><ImagePlus className="size-4" /></span>}
+                <Input accept="image/*" id="edit-project-logo" name="logo" type="file" />
+              </div>
+              <p className="text-xs text-muted-foreground">Optional. Choosing a new image replaces the current logo.</p>
             </div>
           </div>
 

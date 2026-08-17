@@ -65,12 +65,14 @@ export const createProjectSchema = z.object({
     .max(40)
     .regex(/^[A-Z0-9-]+$/, "Use uppercase letters, numbers, and hyphens only."),
   title: z.string().trim().min(2).max(120),
+  classification: z.enum(["white-label", "custom", "internal", "product"]),
 });
 
 export const updateProjectSchema = z.object({
   projectId: z.string().uuid(),
   name: createProjectSchema.shape.name,
   title: createProjectSchema.shape.title,
+  classification: createProjectSchema.shape.classification,
 });
 
 export const toggleProjectActiveSchema = z.object({

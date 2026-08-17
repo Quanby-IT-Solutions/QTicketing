@@ -22,6 +22,7 @@ export async function createProjectAction(formData: FormData) {
   const parsed = createProjectSchema.parse({
     name: formData.get("name"),
     title: formData.get("title"),
+    classification: formData.get("classification"),
   });
 
   const logo = formData.get("logo");
@@ -31,7 +32,7 @@ export async function createProjectAction(formData: FormData) {
 
   const [inserted] = await db
     .insert(projects)
-    .values({ id: projectId, name: parsed.name, title: parsed.title, active: true, logoObjectKey: uploadedLogo?.objectKey, logoMimeType: uploadedLogo?.mimeType })
+    .values({ id: projectId, name: parsed.name, title: parsed.title, classification: parsed.classification, active: true, logoObjectKey: uploadedLogo?.objectKey, logoMimeType: uploadedLogo?.mimeType })
     .returning({ id: projects.id });
 
   await db.insert(userProjects).values({
@@ -52,6 +53,7 @@ export async function updateProjectAction(formData: FormData) {
     projectId: formData.get("projectId"),
     name: formData.get("name"),
     title: formData.get("title"),
+    classification: formData.get("classification"),
   });
 
   const logo = formData.get("logo");
@@ -62,7 +64,7 @@ export async function updateProjectAction(formData: FormData) {
 
   await db
     .update(projects)
-    .set({ name: parsed.name, title: parsed.title, ...(uploadedLogo ? { logoObjectKey: uploadedLogo.objectKey, logoMimeType: uploadedLogo.mimeType } : {}) })
+    .set({ name: parsed.name, title: parsed.title, classification: parsed.classification, ...(uploadedLogo ? { logoObjectKey: uploadedLogo.objectKey, logoMimeType: uploadedLogo.mimeType } : {}) })
     .where(eq(projects.id, parsed.projectId));
 
   if (uploadedLogo && current.logoObjectKey) await deleteTicketAttachments([current.logoObjectKey]);

@@ -45,6 +45,7 @@ export type ProjectActionsProject = {
   name: string;
   title: string;
   logoObjectKey: string | null;
+  classification: string;
   active: boolean;
 };
 
@@ -120,6 +121,7 @@ export function ProjectActions({ project }: { project: ProjectActionsProject }) 
     name: project.name,
     title: project.title,
     logoObjectKey: project.logoObjectKey,
+    classification: project.classification,
   };
 
   return (

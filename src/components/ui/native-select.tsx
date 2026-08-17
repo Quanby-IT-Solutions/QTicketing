@@ -136,7 +136,7 @@ function NativeSelect({
       >
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
-      <SelectContent align="start">
+      <SelectContent align="start" alignItemWithTrigger={false} side="bottom" sideOffset={4}>
         {children}
       </SelectContent>
     </Select>

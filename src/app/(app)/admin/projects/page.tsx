@@ -1,16 +1,14 @@
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { asc } from "drizzle-orm";
-import { FolderKanban, Plus, Shapes } from "lucide-react";
-import { createProjectAction } from "@/app/actions/projects";
+import { FolderKanban, Shapes } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ProjectActions } from "@/components/project-actions";
+import { CreateProjectDialog } from "@/components/create-project-dialog";
 import { db } from "@/db";
 import { projects } from "@/db/schema";
 import { requireUser } from "@/lib/auth";
@@ -18,6 +16,13 @@ import { requireUser } from "@/lib/auth";
 export const metadata: Metadata = {
   title: "Projects",
 };
+
+const classificationLabels = {
+  "white-label": "White Label",
+  custom: "Custom / Bespoke",
+  internal: "Internal",
+  product: "Product",
+} as const;
 
 export default async function ProjectsPage() {
   const currentUser = await requireUser();
@@ -36,44 +41,14 @@ export default async function ProjectsPage() {
             Configure the project workspaces available for ticket routing.
           </p>
         </div>
-        <Badge className="w-fit gap-1.5" variant="outline">
-          <span className="size-1.5 rounded-full bg-emerald-500" />
-          {activeCount} active
-        </Badge>
+        <div className="flex items-center gap-3">
+          <Badge className="w-fit gap-1.5" variant="outline">
+            <span className="size-1.5 rounded-full bg-emerald-500" />
+            {activeCount} active
+          </Badge>
+          <CreateProjectDialog />
+        </div>
       </div>
-
-      <Card>
-        <CardHeader className="border-b">
-          <CardTitle className="flex items-center gap-2">
-            <Plus className="size-4 text-primary" />
-            Add a project
-          </CardTitle>
-          <CardDescription>Create a short code and a descriptive display name for the sidebar and ticket forms.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form action={createProjectAction} className="grid gap-5 md:grid-cols-[minmax(10rem,0.65fr)_minmax(16rem,1.35fr)_minmax(12rem,0.8fr)_auto] md:items-end">
-            <div className="space-y-2">
-              <Label htmlFor="name">Project code</Label>
-              <Input className="font-mono uppercase" id="name" maxLength={40} name="name" placeholder="FINANCE" required />
-              <p className="text-xs text-muted-foreground">Uppercase letters, numbers, and hyphens.</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="logo">Project logo</Label>
-              <Input accept="image/*" id="logo" name="logo" type="file" />
-              <p className="text-xs text-muted-foreground">Optional image used to identify this project.</p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="title">Display name</Label>
-              <Input id="title" maxLength={120} name="title" placeholder="Finance Management System" required />
-              <p className="text-xs text-muted-foreground">Shown throughout ticket forms and tables.</p>
-            </div>
-            <Button className="md:mb-5" type="submit">
-              <Plus data-icon="inline-start" />
-              Add project
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
 
       <Card>
         <CardHeader className="border-b">
@@ -90,6 +65,7 @@ export default async function ProjectsPage() {
                 <TableRow>
                   <TableHead scope="col">Project</TableHead>
                   <TableHead scope="col">Code</TableHead>
+                  <TableHead scope="col">Type</TableHead>
                   <TableHead scope="col">Created</TableHead>
                   <TableHead scope="col">Status</TableHead>
                   <TableHead className="text-right" scope="col">Actions</TableHead>
@@ -109,6 +85,7 @@ export default async function ProjectsPage() {
                     <TableCell>
                       <span className="rounded-md bg-muted px-2 py-1 font-mono text-xs font-medium">{project.name}</span>
                     </TableCell>
+                    <TableCell><Badge variant="secondary">{classificationLabels[project.classification as keyof typeof classificationLabels]}</Badge></TableCell>
                     <TableCell className="whitespace-nowrap text-muted-foreground">{project.createdAt.toLocaleDateString()}</TableCell>
                     <TableCell>
                       <Badge
@@ -127,6 +104,7 @@ export default async function ProjectsPage() {
                           name: project.name,
                           title: project.title,
                           logoObjectKey: project.logoObjectKey,
+                          classification: project.classification,
                           active: project.active,
                         }}
                       />
